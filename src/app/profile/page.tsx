@@ -4,11 +4,12 @@ import React, { useEffect, useState } from "react";
 import supabase from '@/lib/supabase/createClient';
 import { User } from "@supabase/supabase-js";
 import Onboarding from "@/components/Onboarding";
-//import IQTest from "@/components/IQTest";
 
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [isInUserInfo, setIsInUserInfo] = useState<boolean | null>(null);
+  const [username, setUsername] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -25,7 +26,7 @@ export default function UserProfile() {
       if (userData.user) {
         const { data: userInfoData, error: userInfoError } = await supabase
           .from("profiles")
-          .select("id")
+          .select("username")
           .eq("id", userData.user.id)
           .single();
 
@@ -34,6 +35,7 @@ export default function UserProfile() {
           setIsInUserInfo(false);
         } else {
           setIsInUserInfo(!!userInfoData);
+          setUsername(userInfoData?.username || "");
         }
       } else {
         setIsInUserInfo(false);
@@ -42,6 +44,46 @@ export default function UserProfile() {
 
     fetchUserData();
   }, []);
+
+  const handleUsernameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(event.target.value);
+  };
+
+  const saveUsername = async () => {
+    if (!user) return;
+    setLoading(true);
+  
+    // Fetch the existing user profile data
+    const { data: existingProfile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+  
+    if (fetchError) {
+      console.error("Error fetching user profile:", fetchError.message);
+      setLoading(false);
+      return;
+    }
+  
+    // Update only the username while keeping existing profile data intact
+    const updatedProfile = {
+      ...existingProfile,
+      username, // Updating the username
+    };
+  
+    // Upsert the updated profile
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .upsert(updatedProfile);
+  
+    if (updateError) {
+      console.error("Error updating username:", updateError.message);
+    }
+  
+    setLoading(false);
+  };
+  
 
   if (isInUserInfo === null) {
     return <p>Loading user data...</p>;
@@ -58,6 +100,21 @@ export default function UserProfile() {
           <h2>Your Profile</h2>
           <div className="mt-4">
             <div className="flex-col">
+              <label htmlFor="username">Username: </label>
+              <input
+                id="username"
+                type="text"
+                value={username}
+                onChange={handleUsernameChange}
+                className="text-black p-2 rounded"
+              />
+              <button
+                onClick={saveUsername}
+                className="ml-2 bg-blue-500 p-2 rounded text-white"
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save"}
+              </button>
               <p>Email: {user.email}</p>
               <p>Balance: </p>
               <p>Player ID: </p>
