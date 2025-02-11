@@ -45,7 +45,7 @@ export default function ViewMarkets() {
           <tbody>
             {markets?.map((market) => (
               <tr key={market.id} className="border-b">
-                <td className="px-4 py-2 bg-gray-600 text-white text-center">
+                <td className="px-4 py-2 bg-gray-600 text-white text-center hover:text-blue-500">
                   <Link href={`/markets/${market.id}`}>
                     {market.name}
                   </Link>
