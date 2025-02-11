@@ -1,133 +1,135 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import supabase from '@/lib/supabase/createClient';
+import supabase from "@/lib/supabase/createClient";
 import { User } from "@supabase/supabase-js";
-import Onboarding from "@/components/Onboarding";
+
+// Define the Profile type
+interface Profile {
+  id: string;
+  username: string;
+  email?: string;
+  balance?: number;
+}
 
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
-  const [isInUserInfo, setIsInUserInfo] = useState<boolean | null>(null);
-  const [username, setUsername] = useState<string>("");
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [newUsername, setNewUsername] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchUserProfile = async () => {
+      // Fetch authenticated user
       const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error("Error fetching user:", userError.message);
-        setUser(null);
-        setIsInUserInfo(null);
+      if (userError || !userData.user) {
+        console.error("Error fetching user:", userError?.message);
+        return;
+      }
+      setUser(userData.user);
+
+      // Fetch logged-in user's profile
+      const { data: profileData, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, username, email, balance")
+        .eq("user_id", userData.user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Error fetching profile:", profileError.message);
         return;
       }
 
-      setUser(userData.user);
-
-      if (userData.user) {
-        const { data: userInfoData, error: userInfoError } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", userData.user.id)
-          .single();
-
-        if (userInfoError) {
-          console.error("Error checking user_info:", userInfoError.message);
-          setIsInUserInfo(false);
-        } else {
-          setIsInUserInfo(!!userInfoData);
-          setUsername(userInfoData?.username || "");
-        }
-      } else {
-        setIsInUserInfo(false);
-      }
+      setProfile(profileData);
     };
 
-    fetchUserData();
+    fetchUserProfile();
   }, []);
 
-  const handleUsernameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setUsername(event.target.value);
+  const openEditModal = () => {
+    if (!profile) return;
+    setNewUsername(profile.username || "");
+    setIsModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsModalOpen(false);
+    setNewUsername("");
   };
 
   const saveUsername = async () => {
-    if (!user) return;
+    if (!profile) return;
     setLoading(true);
-  
-    // Fetch the existing user profile data
-    const { data: existingProfile, error: fetchError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-  
-    if (fetchError) {
-      console.error("Error fetching user profile:", fetchError.message);
-      setLoading(false);
-      return;
-    }
-  
-    // Update only the username while keeping existing profile data intact
-    const updatedProfile = {
-      ...existingProfile,
-      username, // Updating the username
-    };
-  
-    // Upsert the updated profile
+
     const { error: updateError } = await supabase
       .from("profiles")
-      .upsert(updatedProfile);
-  
+      .update({ username: newUsername })
+      .eq("id", profile.id);
+
     if (updateError) {
       console.error("Error updating username:", updateError.message);
+    } else {
+      setProfile({ ...profile, username: newUsername });
+      closeEditModal();
     }
-  
+
     setLoading(false);
   };
-  
-
-  if (isInUserInfo === null) {
-    return <p>Loading user data...</p>;
-  }
-
-  if (isInUserInfo === false) {
-    return <Onboarding />;
-  }
 
   return (
     <div className="container mt-4 text-white">
-      {user ? (
+      {user && profile ? (
         <>
-          <h2>Your Profile</h2>
-          <div className="mt-4">
-            <div className="flex-col">
-              <label htmlFor="username">Username: </label>
-              <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={handleUsernameChange}
-                className="text-black p-2 rounded"
-              />
+          <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
+
+          <div className="border border-gray-600 p-4 rounded-lg">
+            <p>
+              <strong>Username:</strong> {profile.username}{" "}
               <button
-                onClick={saveUsername}
-                className="ml-2 bg-blue-500 p-2 rounded text-white"
-                disabled={loading}
+                onClick={openEditModal}
+                className="ml-2 bg-blue-500 text-white p-1 rounded"
               >
-                {loading ? "Saving..." : "Save"}
+                Edit
               </button>
-              <p>Email: {user.email}</p>
-              <p>Balance: </p>
-              <p>Player ID: </p>
-            </div>
-            <div className="flex-col">
-              <p>Payment info</p>
-            </div>
-            <h3>Holdings</h3>
-            <h3>Prediction history</h3>
+            </p>
+            <p><strong>Email:</strong> {profile.email || "N/A"}</p>
+            <p><strong>Balance:</strong> {profile.balance ?? "N/A"}</p>
+            <p><strong>Player ID:</strong> {profile.id}</p>
           </div>
         </>
       ) : (
         <p>Loading user data or not logged in...</p>
+      )}
+
+      {/* Edit Username Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-gray-800 p-6 rounded-lg">
+            <h3 className="text-xl mb-2">Edit Username</h3>
+            <input
+              type="text"
+              value={newUsername}
+              onChange={(e) => setNewUsername(e.target.value)}
+              className="text-black p-2 rounded w-full"
+            />
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={closeEditModal}
+                className="bg-gray-500 text-white p-2 rounded mr-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveUsername}
+                className="bg-green-500 text-white p-2 rounded"
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
