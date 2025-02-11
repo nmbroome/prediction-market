@@ -27,10 +27,13 @@ export default function MarketDetails() {
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [amountIn, setAmountIn] = useState<number>(10);
+  const [computedReturn, setComputedReturn] = useState<number>(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Fetch logged-in user.
   const fetchUser = async () => {
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -41,6 +44,7 @@ export default function MarketDetails() {
     }
   };
 
+  // Fetch market data (both market details and outcomes).
   const fetchMarketData = useCallback(async () => {
     if (!id) return;
 
@@ -71,6 +75,27 @@ export default function MarketDetails() {
     fetchMarketData();
   }, [fetchMarketData]);
 
+  // Re-calculate the return amount whenever the selected answer or amount changes.
+  useEffect(() => {
+    // Only calculate if a valid (greater than 0) amount is provided.
+    if (selectedAnswer && amountIn > 0) {
+      const reserveA = selectedAnswer.tokens;
+      const otherAnswers = answers.filter((a) => a.id !== selectedAnswer.id);
+      const reserveB = otherAnswers.reduce((sum, a) => sum + a.tokens, 0);
+
+      if (reserveA > 0 && reserveB > 0) {
+        const returnAmt = constantProductMarketMaker(reserveA, reserveB, amountIn);
+        setComputedReturn(returnAmt);
+      } else {
+        setComputedReturn(0);
+      }
+    } else {
+      // If amountIn is not valid, set computed return to 0.
+      setComputedReturn(0);
+    }
+  }, [selectedAnswer, amountIn, answers]);
+
+  // Handle prediction submission.
   const handlePrediction = async (selectedAnswer: Answer) => {
     setError(null);
     setSuccess(null);
@@ -85,8 +110,14 @@ export default function MarketDetails() {
       return;
     }
 
+    // Validate that amountIn is greater than 0 before proceeding.
+    if (amountIn <= 0) {
+      setError("Please enter a prediction amount greater than 0.");
+      return;
+    }
+
     try {
-      // Get token reserves
+      // Get token reserves.
       const reserveA = selectedAnswer.tokens;
       const otherAnswers = answers.filter((a) => a.id !== selectedAnswer.id);
       const reserveB = otherAnswers.reduce((sum, a) => sum + a.tokens, 0);
@@ -95,14 +126,14 @@ export default function MarketDetails() {
         throw new Error("Market liquidity is insufficient.");
       }
 
-      // Calculate return amount using CPMM
+      // Calculate return amount using CPMM (re-calc to be sure).
       const returnAmount = constantProductMarketMaker(reserveA, reserveB, amountIn);
 
       if (returnAmount <= 0) {
         throw new Error("Trade failed: Insufficient liquidity.");
       }
 
-      // Insert prediction
+      // Insert prediction record.
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
@@ -111,7 +142,7 @@ export default function MarketDetails() {
         return_amt: returnAmount,
       });
 
-      // Update token pool in the database
+      // Update the selected outcome's token pool.
       const { error: updateError } = await supabase
         .from("outcomes")
         .update({ tokens: reserveA + amountIn })
@@ -125,8 +156,12 @@ export default function MarketDetails() {
         )} tokens if correct.`
       );
 
-      // Refresh Market Data
+      // Refresh market data after prediction.
       await fetchMarketData();
+
+      // Optionally, reset the selected answer and amount.
+      setSelectedAnswer(null);
+      setAmountIn(10);
     } catch (e) {
       setError(`Error making prediction: ${e}`);
     }
@@ -146,32 +181,23 @@ export default function MarketDetails() {
       </p>
 
       <div className="mt-6">
-        <label htmlFor="amountIn" className="block text-sm font-medium text-white">
-          Prediction Amount:
-        </label>
-        <input
-          type="number"
-          id="amountIn"
-          value={amountIn}
-          onChange={(e) => setAmountIn(Number(e.target.value))}
-          min="1"
-          className="mt-1 block w-fit px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
-        />
-      </div>
-
-      <div className="mt-6">
         <h2 className="text-xl font-semibold">Select an Outcome</h2>
         {answers.length > 0 ? (
-          <div className="flex flex-col">
+          <div className="flex flex-row gap-2">
             {answers.map((answer) => (
               <button
                 key={answer.id}
-                onClick={() => handlePrediction(answer)}
-                className="mt-2 w-fit px-4 py-2 text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                onClick={() => setSelectedAnswer(answer)}
+                className={`w-fit px-4 py-2 text-white rounded-lg shadow 
+                  ${
+                    selectedAnswer?.id === answer.id
+                      ? "bg-green-600"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
               >
                 <span className="block text-lg font-medium">{answer.name}</span>
                 <span className="block text-sm">
-                  {market?.token_pool
+                  {market.token_pool
                     ? ((answer.tokens / market.token_pool) * 100).toFixed(2) + "%"
                     : "N/A"}
                 </span>
@@ -181,9 +207,55 @@ export default function MarketDetails() {
         ) : (
           <p className="mt-2">No answers available for this market.</p>
         )}
-        {error && <p className="mt-4 text-red-600">{error}</p>}
-        {success && <p className="mt-4 text-green-600">{success}</p>}
       </div>
+
+      {/* Show the prediction panel only if an answer has been selected */}
+      {selectedAnswer && (
+        <div className="mt-6 p-4 border rounded">
+          <h2 className="text-xl font-semibold">
+            Predict for: {selectedAnswer.name}
+          </h2>
+          <div className="mt-4">
+            <label htmlFor="amountIn" className="block text-sm font-medium text-white">
+              Prediction Amount:
+            </label>
+            <input
+              type="number"
+              id="amountIn"
+              value={amountIn}
+              onChange={(e) => {
+                // If the input is cleared, set amountIn to 0 to avoid passing an invalid value.
+                const value = e.target.value;
+                setAmountIn(value ? Number(value) : 0);
+              }}
+              min="1"
+              className="mt-1 block w-fit px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-black"
+            />
+          </div>
+          <div className="mt-4">
+            <p>
+              <strong>Return Amount:</strong> {computedReturn.toFixed(2)}
+            </p>
+          </div>
+          <div className="mt-4 flex gap-4">
+            <button
+              onClick={() => handlePrediction(selectedAnswer)}
+              className="px-4 py-2 text-white bg-blue-600 rounded-lg shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Submit Prediction
+            </button>
+            <button
+              onClick={() => setSelectedAnswer(null)}
+              className="px-4 py-2 text-white bg-red-600 rounded-lg shadow hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="mt-4 text-red-600">{error}</p>}
+      {success && <p className="mt-4 text-green-600">{success}</p>}
     </div>
   );
 }
