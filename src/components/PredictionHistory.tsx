@@ -1,102 +1,105 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Predictions } from "@/lib/types";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import supabase from "@/lib/supabase/createClient";
 
-const PredictionsTable = () => {
-  const [predictions, setPredictions] = useState<Predictions[]>([]);
+interface Prediction {
+  id: number;
+  user_id: string;
+  market_id: number;
+  outcome_id: number;
+  predict_amt: number;
+  return_amt: number;
+  created_at: string;
+}
+
+interface PredictionHistoryProps {
+  userId: string;
+}
+
+export default function PredictionHistory({ userId }: PredictionHistoryProps) {
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserAndPredictions = async () => {
+    async function fetchPredictions() {
       setLoading(true);
-
+      setError(null);
       try {
-        // Get the currently authenticated user
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) throw userError;
-        if (!user) throw new Error("No authenticated user found");
-
-        // Fetch predictions for the current user
-        const { data: predictionsData, error: predictionsError } = await supabase
+        const { data, error } = await supabase
           .from("predictions")
-          .select("id, market_id, outcome_id, predict_amt, return_amt")
-          .eq("user_id", user.id); // Filter by the current user's ID
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false });
 
-        if (predictionsError) throw predictionsError;
-
-        // Fetch markets data
-        const { data: marketsData, error: marketsError } = await supabase
-          .from("markets")
-          .select("id, name");
-
-        if (marketsError) throw marketsError;
-
-        // Combine the data
-        const formattedData: Predictions[] = predictionsData.map((prediction) => {
-          const market = marketsData.find((m) => m.id === prediction.market_id);
-
-          return {
-            predictionId: prediction.id,
-            marketName: market ? market.name : "Unknown Market",
-            outcome: prediction.outcome_id,
-            predictAmount: prediction.predict_amt,
-            returnAmount: prediction.return_amt,
-          };
-        });
-
-        setPredictions(formattedData);
-      } catch (error) {
-        console.error("Error fetching data:", error);
+        if (error) {
+          throw error;
+        }
+        setPredictions(data as Prediction[]);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Error fetching predictions.");
+        }
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchUserAndPredictions();
-  }, []);
+    if (userId) {
+      fetchPredictions();
+    }
+  }, [userId]);
 
   if (loading) {
-    return <p className="text-center text-lg">Loading predictions...</p>;
+    return <div>Loading prediction history...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
+  if (predictions.length === 0) {
+    return <div>No predictions found for this user.</div>;
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-center my-4">Predictions Table</h1>
-      <div className="flex items-center justify-center">
-        <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
-          <thead>
-            <tr className="bg-gray-800 text-white border-b">
-              <th className="px-4 py-2">Market Name</th>
-              <th className="px-4 py-2">Outcome</th>
-              <th className="px-4 py-2">Prediction Amount</th>
-              <th className="px-4 py-2">Return Amount</th>
+      <h2 className="text-2xl font-bold mb-4">Prediction History</h2>
+      <table className="min-w-full border-collapse">
+        <thead>
+          <tr>
+            <th className="border px-4 py-2">Market ID</th>
+            <th className="border px-4 py-2">Outcome ID</th>
+            <th className="border px-4 py-2">Prediction Amount</th>
+            <th className="border px-4 py-2">Return Amount</th>
+            <th className="border px-4 py-2">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {predictions.map((prediction) => (
+            <tr key={prediction.id}>
+              <td className="border px-4 py-2">
+                <Link
+                  href={`/markets/${prediction.market_id}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  {prediction.market_id}
+                </Link>
+              </td>
+              <td className="border px-4 py-2">{prediction.outcome_id}</td>
+              <td className="border px-4 py-2">{prediction.predict_amt}</td>
+              <td className="border px-4 py-2">{prediction.return_amt}</td>
+              <td className="border px-4 py-2">
+                {new Date(prediction.created_at).toLocaleString()}
+              </td>
             </tr>
-          </thead>
-          <tbody className="text-black text-center">
-            {predictions.map((row, index) => (
-              <tr
-                key={row.predictionId}
-                className={`${
-                  index % 2 === 0 ? "bg-gray-100" : "bg-gray-200"
-                } border-b`}
-              >
-                <td className="px-4 py-2">{row.marketName}</td>
-                <td className="px-4 py-2">{row.outcome}</td>
-                <td className="px-4 py-2">{row.predictAmount}</td>
-                <td className="px-4 py-2">{row.returnAmount}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
-};
-
-export default PredictionsTable;
+}
