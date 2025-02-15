@@ -32,8 +32,8 @@ export default function ViewMarkets() {
       </div>
 
       {/* Table */}
-      <div className="flex items-center justify-center">
-        <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+      <div className="flex items-center justify-center p-8">
+        <table className="min-w-full bg-white shadow-md overflow-hidden">
           <thead>
             <tr className="bg-gray-800 text-white border-b">
               <th className="px-4 py-2">Market Name</th>
