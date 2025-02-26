@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import supabase from "@/lib/supabase/createClient";
+import TradeHistory from "@/components/TradeHistory";
+import { calculatePNL } from "@/lib/calculatePNL";
 import { User } from "@supabase/supabase-js";
 
 // Profile interface
@@ -13,94 +14,6 @@ interface Profile {
   balance?: number;
 }
 
-// Prediction interface (for trade history)
-interface Prediction {
-  id: number;
-  user_id: string;
-  market_id: number;
-  outcome_id: number;
-  predict_amt: number;
-  return_amt: number;
-  created_at: string;
-}
-
-// TradeHistory component which fetches and displays the user's prediction history
-function TradeHistory({ userId }: { userId: string }) {
-  const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    async function fetchPredictions() {
-      setLoading(true);
-      setError(null);
-      try {
-        const { data, error } = await supabase
-          .from("predictions")
-          .select("*")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-        setPredictions(data as Prediction[]);
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Error fetching trade history.");
-        }
-      }
-      setLoading(false);
-    }
-    fetchPredictions();
-  }, [userId]);
-
-  if (loading) return <div>Loading trade history...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (predictions.length === 0)
-    return <div>No trade history available.</div>;
-
-  return (
-    <div className="mt-4">
-      <h3 className="text-xl font-bold mb-2">Trade History</h3>
-      <table className="min-w-full border-collapse text-white">
-        <thead>
-          <tr>
-            <th className="border px-4 py-2">Market ID</th>
-            <th className="border px-4 py-2">Outcome ID</th>
-            <th className="border px-4 py-2">Prediction Amount</th>
-            <th className="border px-4 py-2">Return Amount</th>
-            <th className="border px-4 py-2">Date</th>
-          </tr>
-        </thead>
-        <tbody>
-          {predictions.map((prediction) => (
-            <tr key={prediction.id}>
-              <td className="border px-4 py-2">
-                <Link
-                  href={`/markets/${prediction.market_id}`}
-                  className="text-blue-600 hover:underline"
-                >
-                  {prediction.market_id}
-                </Link>
-              </td>
-              <td className="border px-4 py-2">{prediction.outcome_id}</td>
-              <td className="border px-4 py-2">{prediction.predict_amt}</td>
-              <td className="border px-4 py-2">{prediction.return_amt}</td>
-              <td className="border px-4 py-2">
-                {new Date(prediction.created_at).toLocaleString()}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// Main UserProfile component
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -108,6 +21,13 @@ export default function UserProfile() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [showTradeHistory, setShowTradeHistory] = useState<boolean>(false);
+
+  // State for PNL metrics
+  const [pnlMetrics, setPnlMetrics] = useState<{
+    totalPNL: number;
+    percentageChange: number;
+  } | null>(null);
+  const [pnlError, setPnlError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -135,6 +55,21 @@ export default function UserProfile() {
 
     fetchUserProfile();
   }, []);
+
+  // Fetch PNL metrics once the user is available
+  useEffect(() => {
+    if (user) {
+      const fetchPNL = async () => {
+        try {
+          const result = await calculatePNL(user.id);
+          setPnlMetrics(result);
+        } catch (err: any) {
+          setPnlError(err.message || "Error calculating PNL");
+        }
+      };
+      fetchPNL();
+    }
+  }, [user]);
 
   const openEditModal = () => {
     if (!profile) return;
@@ -166,7 +101,7 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="container mt-4 text-white">
+    <div className="container mt-4  p-4 text-white">
       {user && profile ? (
         <>
           <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
@@ -190,22 +125,38 @@ export default function UserProfile() {
             <p>
               <strong>Player ID:</strong> {profile.id}
             </p>
+            {/* Display PNL below the player id */}
+            <div className="mt-2">
+              {pnlError && <p className="text-red-500">Error: {pnlError}</p>}
+              {pnlMetrics ? (
+                <>
+                  <p>
+                    <strong>Total PNL:</strong>{" "}
+                    {pnlMetrics.totalPNL.toFixed(2)}
+                  </p>
+                  <p>
+                    <strong>Percentage Change:</strong>{" "}
+                    {pnlMetrics.percentageChange.toFixed(2)}%
+                  </p>
+                </>
+              ) : (
+                <p>Calculating Profit/Loss...</p>
+              )}
+            </div>
           </div>
 
           {/* Button to toggle trade history */}
           <div className="mt-4">
             <button
               onClick={() => setShowTradeHistory(!showTradeHistory)}
-              className="bg-purple-500 text-white px-4 py-2 rounded"
+              className="bg-blue-500 text-white px-4 py-2 rounded"
             >
               {showTradeHistory ? "Hide Trade History" : "Show Trade History"}
             </button>
           </div>
 
-          {/* Conditionally render the TradeHistory component */}
-          {showTradeHistory && user && (
-            <TradeHistory userId={user.id} />
-          )}
+          {/* Render TradeHistory component if toggled */}
+          {showTradeHistory && user && <TradeHistory userId={user.id} />}
         </>
       ) : (
         <p>Loading user data or not logged in...</p>
