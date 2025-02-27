@@ -63,9 +63,13 @@ export default function UserProfile() {
         try {
           const result = await calculatePNL(user.id);
           setPnlMetrics(result);
-        } catch (err: any) {
-          setPnlError(err.message || "Error calculating PNL");
-        }
+        } catch (err: unknown) {
+          let errorMessage = "Error calculating PNL";
+          if (err instanceof Error) {
+            errorMessage = err.message;
+          }
+          setPnlError(errorMessage);
+        }        
       };
       fetchPNL();
     }
