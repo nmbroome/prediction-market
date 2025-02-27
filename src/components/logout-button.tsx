@@ -8,8 +8,15 @@ export default function LogoutButton() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.refresh();
+    router.push("/");
   };
 
-  return <button onClick={handleLogout} className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600">Logout</button>;
+  return (
+    <button
+      onClick={handleLogout}
+      className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+    >
+      Logout
+    </button>
+  );
 }
