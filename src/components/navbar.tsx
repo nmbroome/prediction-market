@@ -32,9 +32,12 @@ export default function Navbar() {
 
   return (
     <nav className="flex w-full justify-between items-center p-4 bg-transparent text-white">
+      {/* Left section: Brand */}
       <Link href="/">
         <h1 className="text-3xl font-bold">Prediction Market</h1>
       </Link>
+
+      {/* Right section */}
       <div className="flex space-x-4">
         <Link
           href="/markets"
@@ -53,12 +56,20 @@ export default function Navbar() {
         {user ? (
           <LogoutButton />
         ) : (
-          <Link
-            href="/auth"
-            className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
-          >
-            Log In
-          </Link>
+          <>
+            <Link
+              href="/signup"
+              className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+            >
+              Sign Up
+            </Link>
+            <Link
+              href="/login"
+              className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+            >
+              Log In
+            </Link>
+          </>
         )}
       </div>
     </nav>
