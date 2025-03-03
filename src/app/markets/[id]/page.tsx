@@ -77,20 +77,24 @@ export default function MarketDetails() {
 
   // Re-calculate the return amount whenever the selected answer or amount changes.
   useEffect(() => {
-    // Only calculate if a valid (greater than 0) amount is provided.
     if (selectedAnswer && amountIn > 0) {
       const reserveA = selectedAnswer.tokens;
       const otherAnswers = answers.filter((a) => a.id !== selectedAnswer.id);
       const reserveB = otherAnswers.reduce((sum, a) => sum + a.tokens, 0);
 
+      // Ensure liquidity is sufficient.
       if (reserveA > 0 && reserveB > 0) {
-        const returnAmt = constantProductMarketMaker(reserveA, reserveB, amountIn);
+        // Calculate market odds and cost per share.
+        const marketOdds = reserveB / (reserveA + reserveB);
+        const cost = marketOdds * amountIn;
+
+        // Use cost as the predict_amt in the market maker function.
+        const returnAmt = constantProductMarketMaker(reserveA, reserveB, cost);
         setComputedReturn(returnAmt);
       } else {
         setComputedReturn(0);
       }
     } else {
-      // If amountIn is not valid, set computed return to 0.
       setComputedReturn(0);
     }
   }, [selectedAnswer, amountIn, answers]);
@@ -110,7 +114,6 @@ export default function MarketDetails() {
       return;
     }
 
-    // Validate that amountIn is greater than 0 before proceeding.
     if (amountIn <= 0) {
       setError("Please enter a prediction amount greater than 0.");
       return;
@@ -126,34 +129,40 @@ export default function MarketDetails() {
         throw new Error("Market liquidity is insufficient.");
       }
 
-      // Calculate return amount using CPMM (re-calc to be sure).
-      const returnAmount = constantProductMarketMaker(reserveA, reserveB, amountIn);
+      // Calculate market odds and cost.
+      const marketOdds = reserveB / (reserveA + reserveB);
+      const cost = marketOdds * amountIn;
 
+      // Optionally, check if the user has enough tokens in their balance here.
+      // For example: if(userTokenBalance < cost) { ... }
+
+      // Calculate return amount using the cost.
+      const returnAmount = constantProductMarketMaker(reserveA, reserveB, cost);
       if (returnAmount <= 0) {
         throw new Error("Trade failed: Insufficient liquidity.");
       }
 
-      // Insert prediction record.
+      // Insert prediction record with cost as the predict_amt.
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
         outcome_id: selectedAnswer.id,
-        predict_amt: amountIn,
+        predict_amt: cost, // now using cost instead of raw amountIn
         return_amt: returnAmount,
       });
 
-      // Update the selected outcome's token pool.
+      // Update the selected outcome's token pool by adding the cost.
       const { error: updateError } = await supabase
         .from("outcomes")
-        .update({ tokens: reserveA + amountIn })
+        .update({ tokens: reserveA + cost })
         .eq("id", selectedAnswer.id);
 
       if (updateError) throw new Error(updateError.message);
 
       setSuccess(
-        `Prediction successful! You invested ${amountIn} tokens and may receive ${returnAmount.toFixed(
+        `Prediction successful! You spent ${cost.toFixed(
           2
-        )} tokens if correct.`
+        )} tokens to buy ${amountIn} shares.`
       );
 
       // Refresh market data after prediction.
@@ -209,7 +218,7 @@ export default function MarketDetails() {
         )}
       </div>
 
-      {/* Show the prediction panel only if an answer has been selected */}
+      {/* Prediction panel */}
       {selectedAnswer && (
         <div className="mt-6 p-4 border rounded">
           <h2 className="text-xl font-semibold">
@@ -217,14 +226,13 @@ export default function MarketDetails() {
           </h2>
           <div className="mt-4">
             <label htmlFor="amountIn" className="block text-sm font-medium text-white">
-              Prediction Amount:
+              Number of Shares:
             </label>
             <input
               type="number"
               id="amountIn"
               value={amountIn}
               onChange={(e) => {
-                // If the input is cleared, set amountIn to 0 to avoid passing an invalid value.
                 const value = e.target.value;
                 setAmountIn(value ? Number(value) : 0);
               }}
@@ -234,7 +242,7 @@ export default function MarketDetails() {
           </div>
           <div className="mt-4">
             <p>
-              <strong>Return Amount:</strong> {computedReturn.toFixed(2)}
+              <strong>Potential Return:</strong> {computedReturn.toFixed(2)} tokens
             </p>
           </div>
           <div className="mt-4 flex gap-4">
