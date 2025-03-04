@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { getMarkets } from '@/lib/getMarkets';
 import Link from 'next/link';
+import { MARKET_TAGS } from '@/lib/constants';
 
 interface Market {
   id: number;
@@ -16,9 +17,6 @@ interface Market {
 export default function ViewMarkets() {
   const [markets, setMarkets] = useState<Market[] | null>(null);
   const [selectedTag, setSelectedTag] = useState("all");
-
-  // Available filter tags including "all"
-  const tags = ["all", "politics", "sports", "economics"];
 
   useEffect(() => {
     async function loadMarkets() {
@@ -34,6 +32,9 @@ export default function ViewMarkets() {
       ? markets
       : markets?.filter((market) => market.tags.includes(selectedTag));
 
+  // Combine "all" with the other market tags
+  const filterOptions = ["all", ...MARKET_TAGS];
+
   return (
     <div className='w-full h-full'>
       <div className='flex items-center justify-center'>
@@ -42,7 +43,7 @@ export default function ViewMarkets() {
 
       {/* Filter Buttons */}
       <div className="flex justify-center space-x-4 mb-4">
-        {tags.map((tag) => (
+        {filterOptions.map((tag) => (
           <button
             key={tag}
             onClick={() => setSelectedTag(tag)}
@@ -57,42 +58,46 @@ export default function ViewMarkets() {
         ))}
       </div>
 
-      {/* Markets Table */}
+      {/* Markets Table or No Markets Found Message */}
       <div className="flex items-center justify-center p-8">
-        <table className="min-w-full bg-white shadow-md overflow-hidden">
-          <thead>
-            <tr className="bg-gray-800 text-white border-b">
-              <th className="px-4 py-2">Market Name</th>
-              <th className="px-4 py-2">Description</th>
-              <th className="px-4 py-2">Token Pool</th>
-              <th className="px-4 py-2">Market Maker</th>
-              <th className="px-4 py-2">Tags</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMarkets?.map((market) => (
-              <tr key={market.id} className="border-b">
-                <td className="px-4 py-2 bg-gray-600 text-white text-center hover:text-blue-500">
-                  <Link href={`/markets/${market.id}`}>
-                    {market.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                  {market.description}
-                </td>
-                <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                  {market.token_pool}
-                </td>
-                <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                  {market.market_maker}
-                </td>
-                <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                  {market.tags.join(", ")}
-                </td>
+        {filteredMarkets && filteredMarkets.length > 0 ? (
+          <table className="min-w-full bg-white shadow-md overflow-hidden">
+            <thead>
+              <tr className="bg-gray-800 text-white border-b">
+                <th className="px-4 py-2">Market Name</th>
+                <th className="px-4 py-2">Description</th>
+                <th className="px-4 py-2">Token Pool</th>
+                <th className="px-4 py-2">Market Maker</th>
+                <th className="px-4 py-2">Tags</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredMarkets.map((market) => (
+                <tr key={market.id} className="border-b">
+                  <td className="px-4 py-2 bg-gray-600 text-white text-center hover:text-blue-500">
+                    <Link href={`/markets/${market.id}`}>
+                      {market.name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
+                    {market.description}
+                  </td>
+                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
+                    {market.token_pool}
+                  </td>
+                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
+                    {market.market_maker}
+                  </td>
+                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
+                    {market.tags.join(", ")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-center text-gray-600">No markets found</p>
+        )}
       </div>
     </div>
   );
