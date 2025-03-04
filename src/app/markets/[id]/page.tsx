@@ -142,12 +142,15 @@ export default function MarketDetails() {
         throw new Error("Trade failed: Insufficient liquidity.");
       }
 
-      // Insert prediction record with cost as the predict_amt.
+      // Insert prediction record.
+      // Now, store the number of shares purchased (amountIn) as predict_amt,
+      // and the current market price (marketOdds) as buy_price.
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
         outcome_id: selectedAnswer.id,
-        predict_amt: cost, // now using cost instead of raw amountIn
+        predict_amt: amountIn, // number of shares purchased
+        buy_price: marketOdds, // current price when prediction is made
         return_amt: returnAmount,
       });
 
@@ -162,7 +165,9 @@ export default function MarketDetails() {
       setSuccess(
         `Prediction successful! You spent ${cost.toFixed(
           2
-        )} tokens to buy ${amountIn} shares.`
+        )} tokens to buy ${amountIn} shares at a price of ${marketOdds.toFixed(
+          2
+        )}.`
       );
 
       // Refresh market data after prediction.

@@ -8,9 +8,10 @@ export type Markets = {
 };
 
 export type Predictions = {
-    predictionId: number;
-    marketName: string;
-    outcome: string;
-    predictAmount: number;
-    returnAmount: number;
+  predictionId: number;
+  marketName: string;
+  outcome: string;
+  predictAmount: number;
+  returnAmount: number;
+  buy_price: number;
 };
