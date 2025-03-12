@@ -63,8 +63,12 @@ export default function TradeForm() {
         .eq("market_id", id);
       if (answersError) throw new Error(answersError.message);
       setAnswers(answersData as Answer[]);
-    } catch (e: any) {
-      setError(`Error fetching market data: ${e.message}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(`Error fetching market data: ${e.message}`);
+      } else {
+        setError("Error fetching market data.");
+      }
     }
   }, [id]);
 
@@ -153,8 +157,12 @@ export default function TradeForm() {
       // Reset selection and total price.
       setSelectedAnswer(null);
       setTotalPrice(10);
-    } catch (e: any) {
-      setError(`Error making prediction: ${e.message}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(`Error making prediction: ${e.message}`);
+      } else {
+        setError("Error making prediction.");
+      }
     }
   };
 
@@ -181,7 +189,8 @@ export default function TradeForm() {
                 <span className="block text-lg font-medium">{answer.name}</span>
                 <span className="block text-sm">
                   {totalOutcomeTokens > 0
-                    ? ((answer.tokens / totalOutcomeTokens) * 100).toFixed(2) + "%"
+                    ? ((answer.tokens / totalOutcomeTokens) * 100).toFixed(2) +
+                      "%"
                     : "N/A"}
                 </span>
               </button>

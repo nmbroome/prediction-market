@@ -10,20 +10,12 @@ interface Outcome {
 interface MarketCardProps {
   id: number;
   name: string;
-  description: string;
-  token_pool: number;
-  market_maker: string;
-  tags: string[];
   outcomes?: Outcome[];
 }
 
 export default function MarketCard({
   id,
   name,
-  description,
-  token_pool,
-  market_maker,
-  tags,
   outcomes = [] // default to empty if not provided
 }: MarketCardProps) {
   // Reorder outcomes so that the "yes" outcome appears first
@@ -67,7 +59,7 @@ export default function MarketCard({
 
         {/* Optionally, you could show more details in a footer section */}
         <div className="text-center text-sm text-gray-500">
-            Market close:
+          Market close:
         </div>
       </div>
     </Link>

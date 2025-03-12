@@ -47,8 +47,12 @@ export default function MarketDetails() {
 
       if (answersError) throw new Error(answersError.message);
       setAnswers(answersData as Answer[]);
-    } catch (e: any) {
-      setError(`Error fetching market data: ${e.message}`);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(`Error fetching market data: ${e.message}`);
+      } else {
+        setError("Error fetching market data.");
+      }
     }
   }, [id]);
 
@@ -72,7 +76,7 @@ export default function MarketDetails() {
     <div className="p-6">
       <h1 className="text-4xl font-bold">{market.name}</h1>
       <p className="text-2xl mt-2">
-        <strong>{yesOdds} Chance</strong> 
+        <strong>{yesOdds} Chance</strong>
       </p>
       <p className="text-xl mt-2">
         <strong>Description:</strong> {market.description}
