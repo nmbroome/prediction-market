@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { getMarkets } from '@/lib/getMarkets';
-import Link from 'next/link';
 import { MARKET_TAGS } from '@/lib/constants';
+import MarketCard from '@/components/MarketCard';
 
 interface Market {
   id: number;
@@ -12,6 +12,8 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[]; // Array of tags for each market
+  // You might add outcomes here if available:
+  // outcomes: { title: string, odds: number }[];
 }
 
 export default function ViewMarkets() {
@@ -58,43 +60,14 @@ export default function ViewMarkets() {
         ))}
       </div>
 
-      {/* Markets Table or No Markets Found Message */}
-      <div className="flex items-center justify-center p-8">
+      {/* Markets Grid or No Markets Found Message */}
+      <div className="p-8">
         {filteredMarkets && filteredMarkets.length > 0 ? (
-          <table className="min-w-full bg-white shadow-md overflow-hidden">
-            <thead>
-              <tr className="bg-gray-800 text-white border-b">
-                <th className="px-4 py-2">Market Name</th>
-                <th className="px-4 py-2">Description</th>
-                <th className="px-4 py-2">Token Pool</th>
-                <th className="px-4 py-2">Market Maker</th>
-                <th className="px-4 py-2">Tags</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMarkets.map((market) => (
-                <tr key={market.id} className="border-b">
-                  <td className="px-4 py-2 bg-gray-600 text-white text-center hover:text-blue-500">
-                    <Link href={`/markets/${market.id}`}>
-                      {market.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                    {market.description}
-                  </td>
-                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                    {market.token_pool}
-                  </td>
-                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                    {market.market_maker}
-                  </td>
-                  <td className="px-4 py-2 bg-gray-600 text-white text-center">
-                    {market.tags.join(", ")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMarkets.map((market) => (
+              <MarketCard key={market.id} {...market} />
+            ))}
+          </div>
         ) : (
           <p className="text-center text-gray-600">No markets found</p>
         )}
