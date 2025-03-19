@@ -6,6 +6,7 @@ export interface Market {
   description: string;
   token_pool: number;
   market_maker: string;
+  close_date: string;
 }
 
 export async function addMarket(market: Market) {
