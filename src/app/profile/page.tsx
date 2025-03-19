@@ -12,6 +12,7 @@ interface Profile {
   username: string;
   email?: string;
   balance?: number;
+  payment_id?: string; // Added payment_id field
 }
 
 export default function UserProfile() {
@@ -39,10 +40,10 @@ export default function UserProfile() {
       }
       setUser(userData.user);
 
-      // Fetch logged-in user's profile
+      // Fetch logged-in user's profile including payment_id
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, email, balance")
+        .select("id, username, email, balance, payment_id") // Updated select statement
         .eq("user_id", userData.user.id)
         .single();
 
@@ -105,7 +106,7 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="container mt-4  p-4 text-white">
+    <div className="container mt-4 p-4 text-white">
       {user && profile ? (
         <>
           <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
@@ -129,7 +130,11 @@ export default function UserProfile() {
             <p>
               <strong>Player ID:</strong> {profile.id}
             </p>
-            {/* Display PNL below the player id */}
+            {/* Display Payment ID below Player ID */}
+            <p>
+              <strong>Payment ID:</strong> {profile.payment_id || "N/A"}
+            </p>
+            {/* Display PNL below the payment id */}
             <div className="mt-2">
               {pnlError && <p className="text-red-500">Error: {pnlError}</p>}
               {pnlMetrics ? (
