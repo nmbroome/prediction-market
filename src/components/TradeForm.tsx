@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import supabase from "@/lib/supabase/createClient";
 import { addPrediction } from "@/lib/predictions";
+import { constantProductMarketMaker } from "@/lib/marketMakers"; // import your market maker function
 import { User } from "@supabase/supabase-js";
 
 interface Market {
@@ -17,7 +18,7 @@ interface Market {
 interface Answer {
   id: number;
   name: string;
-  tokens: number;
+  tokens: number; // current token pool for this outcome
   market_id: number;
 }
 
@@ -25,8 +26,8 @@ export default function TradeForm() {
   const { id } = useParams();
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(10); // total tokens user will spend
-  const [computedShares, setComputedShares] = useState<number>(0); // number of shares computed from totalPrice
+  const [totalPrice, setTotalPrice] = useState<number>(10); // tokens the user will spend
+  const [computedShares, setComputedShares] = useState<number>(0); // computed shares purchased
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,18 +77,30 @@ export default function TradeForm() {
     fetchMarketData();
   }, [fetchMarketData]);
 
-  // Re-calculate the number of shares purchased when selected outcome or total price changes.
+  // Re-calculate the computed shares using the constantProductMarketMaker function.
+  // This function assumes a binary market (exactly 2 outcomes).
   useEffect(() => {
-    if (selectedAnswer && totalPrice > 0 && answers.length > 0) {
-      // Calculate the total tokens across all outcomes.
-      const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
-      if (totalOutcomeTokens > 0) {
-        // Price per share is the chance for the selected outcome.
-        const pricePerShare = selectedAnswer.tokens / totalOutcomeTokens;
-        // Number of shares purchased = totalPrice divided by price per share.
-        const sharesPurchased = pricePerShare > 0 ? totalPrice / pricePerShare : 0;
-        setComputedShares(sharesPurchased);
-      } else {
+    if (selectedAnswer && totalPrice > 0 && answers.length === 2) {
+      const otherAnswer = answers.find((a) => a.id !== selectedAnswer.id);
+      if (!otherAnswer) {
+        setComputedShares(0);
+        return;
+      }
+      try {
+        // Use the provided function:
+        // outcome1_tokens: selected outcome's token pool
+        // outcome2_tokens: opposing outcome's token pool
+        // predict_amt: amount being spent (totalPrice)
+        const shares = constantProductMarketMaker(
+          selectedAnswer.tokens,
+          otherAnswer.tokens,
+          totalPrice
+        );
+        setComputedShares(shares);
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          setError(e.message);
+        }
         setComputedShares(0);
       }
     } else {
@@ -95,11 +108,11 @@ export default function TradeForm() {
     }
   }, [selectedAnswer, totalPrice, answers]);
 
-  // Handle prediction submission.
+  // Handle prediction submission using the constantProductMarketMaker function.
   const handlePrediction = async () => {
     setError(null);
     setSuccess(null);
-
+  
     if (!user) {
       setError("User is not logged in.");
       return;
@@ -116,45 +129,70 @@ export default function TradeForm() {
       setError("Please enter a total price greater than 0.");
       return;
     }
+    if (answers.length !== 2) {
+      setError("This market currently supports only binary outcomes.");
+      return;
+    }
     try {
-      const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
-      if (totalOutcomeTokens <= 0) {
-        throw new Error("Market liquidity is insufficient.");
+      const otherAnswer = answers.find((a) => a.id !== selectedAnswer.id);
+      if (!otherAnswer) {
+        throw new Error("Could not determine the opposing outcome.");
       }
-      // Price per share for the selected outcome.
-      const pricePerShare = selectedAnswer.tokens / totalOutcomeTokens;
-      const sharesPurchased = pricePerShare > 0 ? totalPrice / pricePerShare : 0;
-      // For a winning prediction, each share might pay out 1 token.
-      // Set potential return equal to sharesPurchased (this can be adjusted as needed).
-      const returnAmount = sharesPurchased;
-
-      // Insert the prediction record.
+  
+      // Determine new token pools
+      const k = selectedAnswer.tokens * otherAnswer.tokens;
+      const newOutcome1Tokens = selectedAnswer.tokens + totalPrice;
+      const newOutcome2Tokens = k / newOutcome1Tokens;
+      const sharesPurchased = constantProductMarketMaker(
+        selectedAnswer.tokens,
+        otherAnswer.tokens,
+        totalPrice
+      );
+  
+      // Insert the prediction record
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
         outcome_id: selectedAnswer.id,
-        predict_amt: sharesPurchased, // number of shares purchased.
-        buy_price: pricePerShare, // price per share (i.e. the % chance for that outcome).
-        return_amt: returnAmount,
+        predict_amt: sharesPurchased, // Number of shares purchased
+        buy_price:
+          selectedAnswer.tokens / (selectedAnswer.tokens + otherAnswer.tokens), // Current probability
+        return_amt: sharesPurchased, // Assuming payout is 1 per share
       });
-
-      // Update the selected outcome's token pool by adding the total price.
-      const { error: updateError } = await supabase
+  
+      // Update both outcomes in the database
+      const { error: updateError1 } = await supabase
         .from("outcomes")
-        .update({ tokens: selectedAnswer.tokens + totalPrice })
+        .update({ tokens: newOutcome1Tokens })
         .eq("id", selectedAnswer.id);
-      if (updateError) throw new Error(updateError.message);
-
+      if (updateError1) throw new Error(updateError1.message);
+  
+      const { error: updateError2 } = await supabase
+        .from("outcomes")
+        .update({ tokens: newOutcome2Tokens })
+        .eq("id", otherAnswer.id);
+      if (updateError2) throw new Error(updateError2.message);
+  
+      // **Now update the market token pool**
+      const newMarketTokenPool = newOutcome1Tokens + newOutcome2Tokens;
+  
+      const { error: marketUpdateError } = await supabase
+        .from("markets")
+        .update({ token_pool: newMarketTokenPool })
+        .eq("id", market.id);
+  
+      if (marketUpdateError) {
+        throw new Error(`Failed to update market token_pool: ${marketUpdateError.message}`);
+      }
+  
       setSuccess(
-        `Prediction successful! You spent ${totalPrice.toFixed(
-          2
-        )} tokens to purchase ${sharesPurchased.toFixed(
-          2
-        )} shares at a price of ${pricePerShare.toFixed(2)}.`
+        `Prediction successful! You spent ${totalPrice.toFixed(2)} tokens to purchase ${sharesPurchased.toFixed(2)} shares.`
       );
-      // Refresh market data.
+  
+      // Refresh market data
       await fetchMarketData();
-      // Reset selection and total price.
+  
+      // Reset selection and total price
       setSelectedAnswer(null);
       setTotalPrice(10);
     } catch (e: unknown) {
@@ -165,6 +203,7 @@ export default function TradeForm() {
       }
     }
   };
+  
 
   // Compute total tokens across all outcomes for display.
   const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
@@ -213,11 +252,11 @@ export default function TradeForm() {
               setTotalPrice(e.target.value ? Number(e.target.value) : 0)
             }
             min="1"
-            className="mt-1 block w-full px-3 py-2 border rounded-md"
+            className="mt-1 block w-full px-3 py-2 border rounded-md text-black"
           />
           <div className="mt-4">
             <p>
-              <strong>Potential Shares Purchased:</strong>{" "}
+              <strong>Shares To Be Purchased (CPMM):</strong>{" "}
               {computedShares.toFixed(2)} shares
             </p>
           </div>
