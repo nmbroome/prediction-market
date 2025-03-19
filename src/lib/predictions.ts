@@ -76,26 +76,23 @@ export async function addPrediction(prediction: Prediction) {
     throw new Error(`Failed to update outcome tokens: ${outcomeUpdateError.message}`);
   }
 
-  // 4. Update the market token pool in the markets table.
-  // Fetch the current token_pool value.
-  const { data: marketData, error: marketFetchError } = await supabase
-    .from("markets")
-    .select("token_pool")
-    .eq("id", market_id)
-    .single();
+  // 4. **Fetch all outcomes for the market and sum their tokens to update market token_pool.**
+  const { data: allOutcomes, error: outcomesFetchError } = await supabase
+    .from("outcomes")
+    .select("tokens")
+    .eq("market_id", market_id);
 
-  if (marketFetchError) {
-    throw new Error(`Failed to fetch market token pool: ${marketFetchError.message}`);
+  if (outcomesFetchError) {
+    throw new Error(`Failed to fetch all outcomes: ${outcomesFetchError.message}`);
   }
 
-  // Calculate the new token_pool (add predict_amt).
-  const currentTokenPool = Number(marketData.token_pool);
-  const newTokenPool = currentTokenPool + predict_amt;
+  // Calculate total token pool by summing all outcome tokens.
+  const totalTokenPool = allOutcomes.reduce((sum, outcome) => sum + Number(outcome.tokens), 0);
 
-  // Update the token_pool value.
+  // Update the market token_pool with the new total.
   const { error: marketUpdateError } = await supabase
     .from("markets")
-    .update({ token_pool: newTokenPool })
+    .update({ token_pool: totalTokenPool })
     .eq("id", market_id);
 
   if (marketUpdateError) {
