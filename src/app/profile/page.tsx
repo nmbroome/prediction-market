@@ -5,7 +5,7 @@ import supabase from "@/lib/supabase/createClient";
 import TradeHistory from "@/components/TradeHistory";
 import { calculatePNL } from "@/lib/calculatePNL";
 import { User } from "@supabase/supabase-js";
-import EditProfileModal from "@/components/EditProfileModal"; // adjust the path as needed
+import EditProfileModal from "@/components/EditProfileModal";
 
 // Profile interface
 interface Profile {
@@ -69,6 +69,7 @@ export default function UserProfile() {
             errorMessage = err.message;
           }
           setPnlError(errorMessage);
+          console.log(pnlError);
         }        
       };
       fetchPNL();
@@ -104,61 +105,98 @@ export default function UserProfile() {
     setLoading(false);
   };
 
+  // Format currency and percentage
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2 
+    }).format(value);
+  };
+
   return (
-    <div className="container mt-4 p-4 text-white">
+    <div className="bg-[#111] min-h-screen p-6">
       {user && profile ? (
-        <>
-          <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
-          <div className="border border-gray-600 p-4 rounded-lg">
-            <p>
-              <strong>Username:</strong> {profile.username}{" "}
-              <button
-                onClick={openEditModal}
-                className="ml-2 bg-blue-500 text-white p-1 rounded"
-              >
-                Edit
-              </button>
-            </p>
-            <p>
-              <strong>Email:</strong> {profile.email || "N/A"}
-            </p>
-            <p>
-              <strong>Balance:</strong> {profile.balance ?? "N/A"}
-            </p>
-            <p>
-              <strong>Player ID:</strong> {profile.id}
-            </p>
-            <p>
-              <strong>Payment ID:</strong> {profile.payment_id || "N/A"}
-            </p>
-            <div className="mt-2">
-              {pnlError && <p className="text-red-500">Error: {pnlError}</p>}
-              {pnlMetrics ? (
-                <>
-                  <p>
-                    <strong>Total PNL:</strong> {pnlMetrics.totalPNL.toFixed(2)}
-                  </p>
-                  <p>
-                    <strong>Percentage Change:</strong> {pnlMetrics.percentageChange.toFixed(2)}%
-                  </p>
-                </>
-              ) : (
-                <p>Calculating Profit/Loss...</p>
-              )}
+        <div className="max-w-4xl mx-auto">
+          {/* Profile Header */}
+          <div className="flex items-center mb-8">
+            <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-purple-500 rounded-full mr-6"></div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">{profile.username}</h1>
+              <p className="text-gray-400">Joined Nov 2020</p>
             </div>
-          </div>
-          <div className="mt-4">
-            <button
-              onClick={() => setShowTradeHistory(!showTradeHistory)}
-              className="bg-blue-500 text-white px-4 py-2 rounded"
+            <button 
+              onClick={openEditModal}
+              className="ml-auto bg-[#222] text-white px-4 py-2 rounded-lg hover:bg-[#333] transition-colors"
             >
-              {showTradeHistory ? "Hide Trade History" : "Show Trade History"}
+              Edit Profile
             </button>
           </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-4 gap-4 mb-8">
+            <div className="bg-[#222] rounded-lg p-4">
+              <div className="text-gray-400 mb-2">Positions value</div>
+              <div className="text-white font-bold text-xl">
+                {formatCurrency(0)}
+              </div>
+            </div>
+            <div className="bg-[#222] rounded-lg p-4">
+              <div className="text-gray-400 mb-2">Profit/loss</div>
+              <div className={`font-bold text-xl ${pnlMetrics && pnlMetrics.totalPNL < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                {pnlMetrics ? formatCurrency(pnlMetrics.totalPNL) : 'Loading...'}
+              </div>
+            </div>
+            <div className="bg-[#222] rounded-lg p-4">
+              <div className="text-gray-400 mb-2">Volume traded</div>
+              <div className="text-white font-bold text-xl">
+                {formatCurrency(2607.97)}
+              </div>
+            </div>
+            <div className="bg-[#222] rounded-lg p-4">
+              <div className="text-gray-400 mb-2">Markets traded</div>
+              <div className="text-white font-bold text-xl">6</div>
+            </div>
+          </div>
+
+          {/* Additional Details */}
+          <div className="bg-[#222] rounded-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Profile Details</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-gray-400">Email</p>
+                <p className="text-white">{profile.email || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Player ID</p>
+                <p className="text-white">{profile.id}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Balance</p>
+                <p className="text-white">{formatCurrency(profile.balance || 0)}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">Payment ID</p>
+                <p className="text-white">{profile.payment_id || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Trade History Toggle */}
+          <button
+            onClick={() => setShowTradeHistory(!showTradeHistory)}
+            className="w-full bg-[#222] text-white py-3 rounded-lg hover:bg-[#333] transition-colors"
+          >
+            {showTradeHistory ? 'Hide Trade History' : 'Show Trade History'}
+          </button>
+
           {showTradeHistory && user && <TradeHistory userId={user.id} />}
-        </>
+        </div>
       ) : (
-        <p>Loading user data or not logged in...</p>
+        <div className="flex justify-center items-center min-h-screen">
+          <p className="text-white">Loading user data...</p>
+        </div>
       )}
 
       {isModalOpen && (
