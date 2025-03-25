@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import supabase from "@/lib/supabase/createClient";
 import { addPrediction } from "@/lib/predictions";
-import { constantProductMarketMaker } from "@/lib/marketMakers"; // import your market maker function
+import { constantProductMarketMaker } from "@/lib/marketMakers";
 import { User } from "@supabase/supabase-js";
 
 interface Market {
@@ -18,7 +18,7 @@ interface Market {
 interface Answer {
   id: number;
   name: string;
-  tokens: number; // current token pool for this outcome
+  tokens: number;
   market_id: number;
 }
 
@@ -26,8 +26,8 @@ export default function TradeForm() {
   const { id } = useParams();
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(10); // tokens the user will spend
-  const [computedShares, setComputedShares] = useState<number>(0); // computed shares purchased
+  const [totalPrice, setTotalPrice] = useState<number>(10);
+  const [computedShares, setComputedShares] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -204,6 +204,65 @@ export default function TradeForm() {
     }
   };
   
+  const handleSell = async () => {
+    setError(null);
+    setSuccess(null);
+    if (!user || !market || !selectedAnswer) {
+      return setError("Missing user, market, or outcome.");
+    }
+    const sellShares = totalPrice;
+    // Fetch user's current position in this outcome
+    const { data: preds, error: fetchError } = await supabase
+    .from("predictions")
+    .select("predict_amt")
+    .eq("user_id", user.id)
+    .eq("outcome_id", selectedAnswer.id);
+  
+    if (fetchError) return setError(fetchError.message);
+    const owned = preds?.reduce((total, p) => total + (p.predict_amt ?? 0), 0) ?? 0;
+  
+    if (sellShares > owned) return setError("Not enough shares to sell.");
+  
+    // Compute current price
+    const price =
+      selectedAnswer.tokens /
+      answers.reduce((acc, a) => acc + a.tokens, 0);
+  
+    // Compute token changes via constant‑product: 
+    // we remove liquidity → newTokens = oldTokens - price * sellShares
+    const other = answers.find((a) => a.id !== selectedAnswer.id)!;
+    const newSelectedTokens = selectedAnswer.tokens - price * sellShares;
+    const k = selectedAnswer.tokens * other.tokens;
+    const newOtherTokens = k / newSelectedTokens;
+  
+    await addPrediction({
+      user_id: user.id,
+      market_id: market.id,
+      outcome_id: selectedAnswer.id,
+      predict_amt: -sellShares,
+      buy_price: price,
+      return_amt: sellShares,
+    });
+  
+    await supabase
+      .from("outcomes")
+      .update({ tokens: newSelectedTokens })
+      .eq("id", selectedAnswer.id);
+    await supabase
+      .from("outcomes")
+      .update({ tokens: newOtherTokens })
+      .eq("id", other.id);
+    await supabase
+      .from("markets")
+      .update({ token_pool: newSelectedTokens + newOtherTokens })
+      .eq("id", market.id);
+  
+    setSuccess(`Sold ${sellShares.toFixed(2)} shares at ${price.toFixed(3)}`);
+    await fetchMarketData();
+    setSelectedAnswer(null);
+    setTotalPrice(10);
+  };
+  
 
   // Compute total tokens across all outcomes for display.
   const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
@@ -267,6 +326,26 @@ export default function TradeForm() {
             >
               Submit Prediction
             </button>
+            {/* Sell Section */}
+            <div className="mt-4 flex items-end gap-4">
+              <label htmlFor="sellAmount" className="block text-sm font-medium">
+                Sell Shares:
+              </label>
+              <input
+                id="sellAmount"
+                type="number"
+                value={totalPrice /* repurpose as sellShares */}
+                onChange={(e) => setTotalPrice(Number(e.target.value))}
+                min="0"
+                className="w-24 px-2 py-1 border rounded-md text-black"
+              />
+              <button
+                onClick={handleSell}
+                className="px-4 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-600"
+              >
+                Sell at Market
+              </button>
+            </div>
             <button
               onClick={() => setSelectedAnswer(null)}
               className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700"
