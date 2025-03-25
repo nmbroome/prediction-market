@@ -5,6 +5,7 @@ import supabase from "@/lib/supabase/createClient";
 import TradeHistory from "@/components/TradeHistory";
 import { calculatePNL } from "@/lib/calculatePNL";
 import { User } from "@supabase/supabase-js";
+import EditProfileModal from "@/components/EditProfileModal"; // adjust the path as needed
 
 // Profile interface
 interface Profile {
@@ -12,7 +13,7 @@ interface Profile {
   username: string;
   email?: string;
   balance?: number;
-  payment_id?: string; // Added payment_id field
+  payment_id?: string;
 }
 
 export default function UserProfile() {
@@ -32,7 +33,6 @@ export default function UserProfile() {
 
   useEffect(() => {
     const fetchUserProfile = async () => {
-      // Fetch authenticated user
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData.user) {
         console.error("Error fetching user:", userError?.message);
@@ -40,10 +40,9 @@ export default function UserProfile() {
       }
       setUser(userData.user);
 
-      // Fetch logged-in user's profile including payment_id
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, email, balance, payment_id") // Updated select statement
+        .select("id, username, email, balance, payment_id")
         .eq("user_id", userData.user.id)
         .single();
 
@@ -110,7 +109,6 @@ export default function UserProfile() {
       {user && profile ? (
         <>
           <h2 className="text-2xl font-bold mb-4">Your Profile</h2>
-
           <div className="border border-gray-600 p-4 rounded-lg">
             <p>
               <strong>Username:</strong> {profile.username}{" "}
@@ -130,22 +128,18 @@ export default function UserProfile() {
             <p>
               <strong>Player ID:</strong> {profile.id}
             </p>
-            {/* Display Payment ID below Player ID */}
             <p>
               <strong>Payment ID:</strong> {profile.payment_id || "N/A"}
             </p>
-            {/* Display PNL below the payment id */}
             <div className="mt-2">
               {pnlError && <p className="text-red-500">Error: {pnlError}</p>}
               {pnlMetrics ? (
                 <>
                   <p>
-                    <strong>Total PNL:</strong>{" "}
-                    {pnlMetrics.totalPNL.toFixed(2)}
+                    <strong>Total PNL:</strong> {pnlMetrics.totalPNL.toFixed(2)}
                   </p>
                   <p>
-                    <strong>Percentage Change:</strong>{" "}
-                    {pnlMetrics.percentageChange.toFixed(2)}%
+                    <strong>Percentage Change:</strong> {pnlMetrics.percentageChange.toFixed(2)}%
                   </p>
                 </>
               ) : (
@@ -153,8 +147,6 @@ export default function UserProfile() {
               )}
             </div>
           </div>
-
-          {/* Button to toggle trade history */}
           <div className="mt-4">
             <button
               onClick={() => setShowTradeHistory(!showTradeHistory)}
@@ -163,42 +155,20 @@ export default function UserProfile() {
               {showTradeHistory ? "Hide Trade History" : "Show Trade History"}
             </button>
           </div>
-
-          {/* Render TradeHistory component if toggled */}
           {showTradeHistory && user && <TradeHistory userId={user.id} />}
         </>
       ) : (
         <p>Loading user data or not logged in...</p>
       )}
 
-      {/* Edit Username Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-gray-800 p-6 rounded-lg">
-            <h3 className="text-xl mb-2">Edit Username</h3>
-            <input
-              type="text"
-              value={newUsername}
-              onChange={(e) => setNewUsername(e.target.value)}
-              className="text-black p-2 rounded w-full"
-            />
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={closeEditModal}
-                className="bg-gray-500 text-white p-2 rounded mr-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveUsername}
-                className="bg-green-500 text-white p-2 rounded"
-                disabled={loading}
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditProfileModal
+          newUsername={newUsername}
+          setNewUsername={setNewUsername}
+          onClose={closeEditModal}
+          onSave={saveUsername}
+          loading={loading}
+        />
       )}
     </div>
   );
