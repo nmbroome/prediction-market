@@ -34,7 +34,7 @@ export default function Navbar() {
     <nav className="flex w-full justify-between items-center p-4 bg-transparent text-white">
       {/* Left section: Brand */}
       <Link href="/">
-        <h1 className="text-3xl font-bold">Prediction Market</h1>
+        <h1 className="text-3xl font-bold">Prophet V3</h1>
       </Link>
 
       {/* Right section */}

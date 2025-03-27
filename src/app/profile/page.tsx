@@ -116,7 +116,7 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="bg-[#111] min-h-screen p-6">
+    <div className="min-h-screen p-6">
       {user && profile ? (
         <div className="max-w-4xl mx-auto">
           {/* Profile Header */}
@@ -136,32 +136,32 @@ export default function UserProfile() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="bg-[#222] rounded-lg p-4">
+            <div className="rounded-lg border-2 border-gray-400 p-4">
               <div className="text-gray-400 mb-2">Positions value</div>
               <div className="text-white font-bold text-xl">
                 {formatCurrency(0)}
               </div>
             </div>
-            <div className="bg-[#222] rounded-lg p-4">
+            <div className="border-2 border-gray-400 rounded-lg p-4">
               <div className="text-gray-400 mb-2">Profit/loss</div>
               <div className={`font-bold text-xl ${pnlMetrics && pnlMetrics.totalPNL < 0 ? 'text-red-500' : 'text-green-500'}`}>
                 {pnlMetrics ? formatCurrency(pnlMetrics.totalPNL) : 'Loading...'}
               </div>
             </div>
-            <div className="bg-[#222] rounded-lg p-4">
+            <div className="border-2 border-gray-400 rounded-lg p-4">
               <div className="text-gray-400 mb-2">Volume traded</div>
               <div className="text-white font-bold text-xl">
-                {formatCurrency(2607.97)}
+                {formatCurrency(0.00)}
               </div>
             </div>
-            <div className="bg-[#222] rounded-lg p-4">
+            <div className="border-2 border-gray-400 rounded-lg p-4">
               <div className="text-gray-400 mb-2">Markets traded</div>
-              <div className="text-white font-bold text-xl">6</div>
+              <div className="text-white font-bold text-xl">0</div>
             </div>
           </div>
 
           {/* Additional Details */}
-          <div className="bg-[#222] rounded-lg p-6 mb-6">
+          <div className="border-2 border-gray-400 rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">Profile Details</h2>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -186,7 +186,7 @@ export default function UserProfile() {
           {/* Trade History Toggle */}
           <button
             onClick={() => setShowTradeHistory(!showTradeHistory)}
-            className="w-full bg-[#222] text-white py-3 rounded-lg hover:bg-[#333] transition-colors"
+            className="w-full border-2 border-gray-400 text-white py-3 rounded-lg hover:bg-[#333] transition-colors"
           >
             {showTradeHistory ? 'Hide Trade History' : 'Show Trade History'}
           </button>
