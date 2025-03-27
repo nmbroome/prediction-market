@@ -26,12 +26,13 @@ export default function TradeForm() {
   const { id } = useParams();
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(10);
+  const [totalPrice, setTotalPrice] = useState<number>(0);
   const [computedShares, setComputedShares] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [tradeType, setTradeType] = useState<'Buy' | 'Sell'>('Buy');
 
   // Fetch logged-in user.
   useEffect(() => {
@@ -267,96 +268,132 @@ export default function TradeForm() {
   // Compute total tokens across all outcomes for display.
   const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
 
+  // Calculate market probability for each outcome
+  const getOutcomeProbability = (answer: Answer) => {
+    return totalOutcomeTokens > 0
+      ? ((answer.tokens / totalOutcomeTokens) * 100).toFixed(0)
+      : '0';
+  };
+
   return (
-    <div className="p-6 border rounded mt-6">
-      <h2 className="text-xl font-semibold">Trade Your Prediction</h2>
-      <div className="mt-4">
-        <h3 className="text-lg font-medium">Select an Outcome</h3>
-        {answers.length > 0 ? (
-          <div className="flex flex-row gap-2 mt-2">
-            {answers.map((answer) => (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-lg border border-[#2C2C2C] p-6">
+        {/* Market Title */}
+        <div className="mb-6">
+          <h2 className="text-white text-xl font-semibold">
+            {market?.name || "Will Trump and Zelenskyy meet..."}
+          </h2>
+        </div>
+
+        {/* Trade Type Selector */}
+        <div className="flex mb-6">
+          <button
+            onClick={() => setTradeType('Buy')}
+            className={`w-1/2 py-2 ${
+              tradeType === 'Buy' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-[#2C2C2C] text-gray-400'
+            } rounded-l-lg transition-colors`}
+          >
+            Buy
+          </button>
+          <button
+            onClick={() => setTradeType('Sell')}
+            className={`w-1/2 py-2 ${
+              tradeType === 'Sell' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-[#2C2C2C] text-gray-400'
+            } rounded-r-lg transition-colors`}
+          >
+            Sell
+          </button>
+        </div>
+
+        {/* Outcome Buttons */}
+        <div className="flex gap-4 mb-6">
+          {answers.length > 0 ? (
+            answers.map((answer) => (
               <button
                 key={answer.id}
                 onClick={() => setSelectedAnswer(answer)}
-                className={`w-fit px-4 py-2 text-white rounded-lg shadow ${
+                className={`flex-1 py-3 rounded-lg transition-colors ${
                   selectedAnswer?.id === answer.id
-                    ? "bg-green-600"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-[#2C2C2C] text-gray-400 hover:bg-[#3C3C3C]'
                 }`}
               >
-                <span className="block text-lg font-medium">{answer.name}</span>
-                <span className="block text-sm">
-                  {totalOutcomeTokens > 0
-                    ? ((answer.tokens / totalOutcomeTokens) * 100).toFixed(2) +
-                      "%"
-                    : "N/A"}
-                </span>
+                <div className="flex justify-between px-4">
+                  <span>{answer.name}</span>
+                  <span>{getOutcomeProbability(answer)}¢</span>
+                </div>
               </button>
-            ))}
-          </div>
-        ) : (
-          <p>No outcomes available.</p>
-        )}
-      </div>
-      {selectedAnswer && (
-        <div className="mt-6">
-          <label htmlFor="totalPrice" className="block text-sm font-medium">
-            Total Price:
-          </label>
-          <input
-            type="number"
-            id="totalPrice"
-            value={totalPrice}
-            onChange={(e) =>
-              setTotalPrice(e.target.value ? Number(e.target.value) : 0)
-            }
-            min="1"
-            className="mt-1 block w-full px-3 py-2 border rounded-md text-black"
-          />
-          <div className="mt-4">
-            <p>
-              <strong>Shares To Be Purchased (CPMM):</strong>{" "}
-              {computedShares.toFixed(2)} shares
-            </p>
-          </div>
-          <div className="mt-4 flex gap-4">
-            <button
-              onClick={handlePrediction}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
-            >
-              Submit Prediction
-            </button>
-            {/* Sell Section */}
-            <div className="mt-4 flex items-end gap-4">
-              <label htmlFor="sellAmount" className="block text-sm font-medium">
-                Sell Shares:
-              </label>
-              <input
-                id="sellAmount"
-                type="number"
-                value={totalPrice /* repurpose as sellShares */}
-                onChange={(e) => setTotalPrice(Number(e.target.value))}
-                min="0"
-                className="w-24 px-2 py-1 border rounded-md text-black"
-              />
-              <button
-                onClick={handleSell}
-                className="px-4 py-2 bg-yellow-500 text-black rounded-lg shadow hover:bg-yellow-600"
-              >
-                Sell at Market
+            ))
+          ) : (
+            <>
+              <button className="flex-1 py-3 bg-[#2C2C2C] text-gray-400 rounded-lg">
+                <div className="flex justify-between px-4">
+                  <span>Yes</span>
+                  <span>13¢</span>
+                </div>
               </button>
-            </div>
-            <button
-              onClick={() => setSelectedAnswer(null)}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700"
-            >
-              Cancel
-            </button>
+              <button className="flex-1 py-3 bg-[#2C2C2C] text-gray-400 rounded-lg">
+                <div className="flex justify-between px-4">
+                  <span>No</span>
+                  <span>92¢</span>
+                </div>
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Amount Input */}
+        <div className="mb-6">
+          <label className="block text-gray-400 mb-2">Amount</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
+            <input
+              type="number"
+              value={totalPrice}
+              onChange={(e) => setTotalPrice(Number(e.target.value))}
+              className="w-full bg-[#2C2C2C] text-white py-3 pl-6 pr-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="0"
+            />
           </div>
         </div>
-      )}
-      {error && <p className="mt-4 text-red-600">{error}</p>}
-      {success && <p className="mt-4 text-green-600">{success}</p>}
+
+        {/* Trade Details */}
+        <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
+          <div className="flex justify-between mb-2">
+            <span className="text-gray-400">Contracts</span>
+            <span className="text-white">{computedShares.toFixed(0)}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+            <span className="text-gray-400">Average price</span>
+            <span className="text-white">
+              {selectedAnswer 
+                ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '¢'
+                : '0¢'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-400">Payout if {selectedAnswer?.name || 'outcome'} wins</span>
+            <span className="text-white">$0</span>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <button 
+          onClick={tradeType === 'Buy' ? handlePrediction : handleSell}
+          className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors"
+          disabled={!selectedAnswer || totalPrice <= 0}
+        >
+          {tradeType === 'Buy' ? 'Buy' : 'Sell'} {selectedAnswer?.name || 'Outcome'}
+        </button>
+
+        {/* Error/Success Messages */}
+        {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
+        {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
+      </div>
     </div>
   );
 }
