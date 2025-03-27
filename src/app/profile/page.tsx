@@ -128,7 +128,7 @@ export default function UserProfile() {
             </div>
             <button 
               onClick={openEditModal}
-              className="ml-auto bg-[#222] text-white px-4 py-2 rounded-lg hover:bg-[#333] transition-colors"
+              className="ml-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
             >
               Edit Profile
             </button>
