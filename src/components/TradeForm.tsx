@@ -26,7 +26,7 @@ export default function TradeForm() {
   const { id } = useParams();
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [totalPrice, setTotalPrice] = useState<number>(10); // Default to $10
   const [computedShares, setComputedShares] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -150,15 +150,16 @@ export default function TradeForm() {
         totalPrice
       );
   
-      // Insert the prediction record
+      // FIXED: Now using totalPrice as the dollar amount spent
+      // and sharesPurchased as the number of shares received
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
         outcome_id: selectedAnswer.id,
-        predict_amt: sharesPurchased, // Number of shares purchased
+        predict_amt: totalPrice, // Dollar amount spent (not shares)
         buy_price:
           selectedAnswer.tokens / (selectedAnswer.tokens + otherAnswer.tokens), // Current probability
-        return_amt: sharesPurchased, // Assuming payout is 1 per share
+        return_amt: sharesPurchased, // Number of shares received
       });
   
       // Update both outcomes in the database
@@ -174,7 +175,7 @@ export default function TradeForm() {
         .eq("id", otherAnswer.id);
       if (updateError2) throw new Error(updateError2.message);
   
-      // **Now update the market token pool**
+      // Update the market token pool
       const newMarketTokenPool = newOutcome1Tokens + newOutcome2Tokens;
   
       const { error: marketUpdateError } = await supabase
@@ -187,7 +188,7 @@ export default function TradeForm() {
       }
   
       setSuccess(
-        `Prediction successful! You spent ${totalPrice.toFixed(2)} tokens to purchase ${sharesPurchased.toFixed(2)} shares.`
+        `Prediction successful! You spent $${totalPrice.toFixed(2)} to purchase ${sharesPurchased.toFixed(2)} shares.`
       );
   
       // Refresh market data
@@ -211,40 +212,47 @@ export default function TradeForm() {
     if (!user || !market || !selectedAnswer) {
       return setError("Missing user, market, or outcome.");
     }
-    const sellShares = totalPrice;
+    const sellShares = totalPrice; // For selling, this is the number of shares to sell
+    
     // Fetch user's current position in this outcome
     const { data: preds, error: fetchError } = await supabase
     .from("predictions")
-    .select("predict_amt")
+    .select("return_amt") // FIXED: Use return_amt to check available shares
     .eq("user_id", user.id)
     .eq("outcome_id", selectedAnswer.id);
   
     if (fetchError) return setError(fetchError.message);
-    const owned = preds?.reduce((total, p) => total + (p.predict_amt ?? 0), 0) ?? 0;
+    
+    // FIXED: Calculate total shares owned by summing return_amt values
+    const owned = preds?.reduce((total, p) => total + (p.return_amt ?? 0), 0) ?? 0;
   
-    if (sellShares > owned) return setError("Not enough shares to sell.");
+    if (sellShares > owned) return setError(`Not enough shares to sell. You own ${owned.toFixed(2)} shares.`);
   
     // Compute current price
     const price =
       selectedAnswer.tokens /
       answers.reduce((acc, a) => acc + a.tokens, 0);
+    
+    // Calculate dollar amount to receive from sale
+    const receivedAmount = price * sellShares;
   
-    // Compute token changes via constant‑product: 
-    // we remove liquidity → newTokens = oldTokens - price * sellShares
+    // Compute token changes via constant-product
     const other = answers.find((a) => a.id !== selectedAnswer.id)!;
-    const newSelectedTokens = selectedAnswer.tokens - price * sellShares;
+    const newSelectedTokens = selectedAnswer.tokens - receivedAmount; // Subtract the dollar amount
     const k = selectedAnswer.tokens * other.tokens;
     const newOtherTokens = k / newSelectedTokens;
   
+    // FIXED: Record the sell transaction with correct values
     await addPrediction({
       user_id: user.id,
       market_id: market.id,
       outcome_id: selectedAnswer.id,
-      predict_amt: -sellShares,
+      predict_amt: -receivedAmount, // Negative dollar amount (user receives this)
       buy_price: price,
-      return_amt: sellShares,
+      return_amt: -sellShares, // Negative shares (shares sold)
     });
   
+    // Update outcome tokens
     await supabase
       .from("outcomes")
       .update({ tokens: newSelectedTokens })
@@ -253,12 +261,14 @@ export default function TradeForm() {
       .from("outcomes")
       .update({ tokens: newOtherTokens })
       .eq("id", other.id);
+    
+    // Update market token pool
     await supabase
       .from("markets")
       .update({ token_pool: newSelectedTokens + newOtherTokens })
       .eq("id", market.id);
   
-    setSuccess(`Sold ${sellShares.toFixed(2)} shares at ${price.toFixed(3)}`);
+    setSuccess(`Sold ${sellShares.toFixed(2)} shares and received $${receivedAmount.toFixed(2)}`);
     await fetchMarketData();
     setSelectedAnswer(null);
     setTotalPrice(10);
@@ -348,9 +358,13 @@ export default function TradeForm() {
 
         {/* Amount Input */}
         <div className="mb-6">
-          <label className="block text-gray-400 mb-2">Amount</label>
+          <label className="block text-gray-400 mb-2">
+            {tradeType === 'Buy' ? 'Amount to Spend ($)' : 'Shares to Sell'}
+          </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">$</span>
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              {tradeType === 'Buy' ? '$' : '#'}
+            </span>
             <input
               type="number"
               value={totalPrice}
@@ -364,11 +378,20 @@ export default function TradeForm() {
         {/* Trade Details */}
         <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
           <div className="flex justify-between mb-2">
-            <span className="text-gray-400">Contracts</span>
-            <span className="text-white">{computedShares.toFixed(0)}</span>
+            <span className="text-gray-400">
+              {tradeType === 'Buy' ? 'Contracts to Receive' : 'Estimated Payout'}
+            </span>
+            <span className="text-white">
+              {tradeType === 'Buy' 
+                ? computedShares.toFixed(2)
+                : selectedAnswer 
+                  ? `$${(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
+                  : '$0.00'
+              }
+            </span>
           </div>
           <div className="flex justify-between mb-2">
-            <span className="text-gray-400">Average price</span>
+            <span className="text-gray-400">Current odds</span>
             <span className="text-white">
               {selectedAnswer 
                 ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '¢'
@@ -376,8 +399,18 @@ export default function TradeForm() {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-400">Payout if {selectedAnswer?.name || 'outcome'} wins</span>
-            <span className="text-white">$0</span>
+            <span className="text-gray-400">
+              {tradeType === 'Buy' 
+                ? `Payout if ${selectedAnswer?.name || 'outcome'} wins`
+                : 'Total shares after sale'
+              }
+            </span>
+            <span className="text-white">
+              {tradeType === 'Buy'
+                ? `$${(computedShares * 1).toFixed(2)}`
+                : '0'
+              }
+            </span>
           </div>
         </div>
 
