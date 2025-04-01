@@ -34,6 +34,9 @@ export default function TradeForm() {
   const [success, setSuccess] = useState<string | null>(null);
   const [tradeType, setTradeType] = useState<'Buy' | 'Sell'>('Buy');
 
+  // State to track user's share balances
+  const [userShares, setUserShares] = useState<{[outcomeId: number]: number}>({});
+
   // Fetch logged-in user.
   useEffect(() => {
     async function fetchUser() {
@@ -77,6 +80,45 @@ export default function TradeForm() {
   useEffect(() => {
     fetchMarketData();
   }, [fetchMarketData]);
+  
+  // Fetch user's shares whenever user or market changes
+  useEffect(() => {
+    async function fetchUserShares() {
+      if (!user || !market) return;
+      
+      try {
+        // Get all user's predictions for this market
+        const { data, error } = await supabase
+          .from("predictions")
+          .select("outcome_id, return_amt")
+          .eq("user_id", user.id)
+          .eq("market_id", market.id);
+          
+        if (error) throw error;
+        
+        // Calculate share balance for each outcome
+        const shares: {[outcomeId: number]: number} = {};
+        
+        // Initialize with zero for all answers
+        answers.forEach(answer => {
+          shares[answer.id] = 0;
+        });
+        
+        // Sum up shares for each outcome
+        data?.forEach(pred => {
+          const outcomeId = pred.outcome_id;
+          const amount = pred.return_amt || 0;
+          shares[outcomeId] = (shares[outcomeId] || 0) + amount;
+        });
+        
+        setUserShares(shares);
+      } catch (e) {
+        console.error("Error fetching user shares:", e);
+      }
+    }
+    
+    fetchUserShares();
+  }, [user, market, answers]);
 
   // Re-calculate the computed shares using the constantProductMarketMaker function.
   // This function assumes a binary market (exactly 2 outcomes).
@@ -214,64 +256,104 @@ export default function TradeForm() {
     }
     const sellShares = totalPrice; // For selling, this is the number of shares to sell
     
-    // Fetch user's current position in this outcome
+    // Fetch user's current position for this specific outcome in this market
     const { data: preds, error: fetchError } = await supabase
-    .from("predictions")
-    .select("return_amt") // FIXED: Use return_amt to check available shares
-    .eq("user_id", user.id)
-    .eq("outcome_id", selectedAnswer.id);
+      .from("predictions")
+      .select("return_amt, predict_amt")
+      .eq("user_id", user.id)
+      .eq("market_id", market.id)
+      .eq("outcome_id", selectedAnswer.id);
   
     if (fetchError) return setError(fetchError.message);
     
-    // FIXED: Calculate total shares owned by summing return_amt values
+    // Calculate net shares owned (buys minus sells) by summing return_amt values
     const owned = preds?.reduce((total, p) => total + (p.return_amt ?? 0), 0) ?? 0;
+    
+    // Check if user has enough shares to sell
+    if (sellShares > owned) {
+      return setError(`Not enough shares to sell. You own ${owned.toFixed(2)} shares of ${selectedAnswer.name}.`);
+    }
+    
+    // Only allow selling shares if the user has a positive balance
+    if (owned <= 0) {
+      return setError(`You don't own any shares of ${selectedAnswer.name} to sell.`);
+    }
   
-    if (sellShares > owned) return setError(`Not enough shares to sell. You own ${owned.toFixed(2)} shares.`);
-  
-    // Compute current price
-    const price =
-      selectedAnswer.tokens /
-      answers.reduce((acc, a) => acc + a.tokens, 0);
+    // Compute current price based on current token distribution
+    const price = selectedAnswer.tokens / totalOutcomeTokens;
     
     // Calculate dollar amount to receive from sale
     const receivedAmount = price * sellShares;
   
-    // Compute token changes via constant-product
-    const other = answers.find((a) => a.id !== selectedAnswer.id)!;
-    const newSelectedTokens = selectedAnswer.tokens - receivedAmount; // Subtract the dollar amount
-    const k = selectedAnswer.tokens * other.tokens;
+    // Compute token changes using constant product market maker
+    const otherAnswer = answers.find((a) => a.id !== selectedAnswer.id);
+    if (!otherAnswer) {
+      return setError("Could not determine the opposing outcome.");
+    }
+    
+    // Calculate new token pools based on removing liquidity
+    const k = selectedAnswer.tokens * otherAnswer.tokens; // Constant product
+    
+    // When selling, we're removing tokens from the selected outcome's pool
+    // The amount to remove is proportional to the current price
+    const tokenRemoval = receivedAmount; // Dollar amount received is liquidity removed
+    const newSelectedTokens = selectedAnswer.tokens - tokenRemoval;
+    
+    // Maintain the constant product k by adjusting the other token pool
     const newOtherTokens = k / newSelectedTokens;
   
-    // FIXED: Record the sell transaction with correct values
-    await addPrediction({
-      user_id: user.id,
-      market_id: market.id,
-      outcome_id: selectedAnswer.id,
-      predict_amt: -receivedAmount, // Negative dollar amount (user receives this)
-      buy_price: price,
-      return_amt: -sellShares, // Negative shares (shares sold)
-    });
-  
-    // Update outcome tokens
-    await supabase
-      .from("outcomes")
-      .update({ tokens: newSelectedTokens })
-      .eq("id", selectedAnswer.id);
-    await supabase
-      .from("outcomes")
-      .update({ tokens: newOtherTokens })
-      .eq("id", other.id);
+    // Record the sell transaction with correct values
+    try {
+      await addPrediction({
+        user_id: user.id,
+        market_id: market.id,
+        outcome_id: selectedAnswer.id,
+        predict_amt: -receivedAmount, // Negative dollar amount (user receives this)
+        buy_price: price,
+        return_amt: -sellShares, // Negative shares (shares sold)
+      });
     
-    // Update market token pool
-    await supabase
-      .from("markets")
-      .update({ token_pool: newSelectedTokens + newOtherTokens })
-      .eq("id", market.id);
-  
-    setSuccess(`Sold ${sellShares.toFixed(2)} shares and received $${receivedAmount.toFixed(2)}`);
-    await fetchMarketData();
-    setSelectedAnswer(null);
-    setTotalPrice(10);
+      // Update outcome tokens in the database
+      const { error: updateError1 } = await supabase
+        .from("outcomes")
+        .update({ tokens: newSelectedTokens })
+        .eq("id", selectedAnswer.id);
+      
+      if (updateError1) throw new Error(`Failed to update outcome tokens: ${updateError1.message}`);
+      
+      const { error: updateError2 } = await supabase
+        .from("outcomes")
+        .update({ tokens: newOtherTokens })
+        .eq("id", otherAnswer.id);
+        
+      if (updateError2) throw new Error(`Failed to update opposing outcome tokens: ${updateError2.message}`);
+      
+      // Update market token pool
+      const newMarketTokenPool = newSelectedTokens + newOtherTokens;
+      const { error: marketUpdateError } = await supabase
+        .from("markets")
+        .update({ token_pool: newMarketTokenPool })
+        .eq("id", market.id);
+      
+      if (marketUpdateError) {
+        throw new Error(`Failed to update market token_pool: ${marketUpdateError.message}`);
+      }
+    
+      setSuccess(`Successfully sold ${sellShares.toFixed(2)} shares of ${selectedAnswer.name} and received ${receivedAmount.toFixed(2)}`);
+      
+      // Refresh market data to update UI with new odds
+      await fetchMarketData();
+      
+      // Reset form
+      setSelectedAnswer(null);
+      setTotalPrice(10);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(`Error selling shares: ${e.message}`);
+      } else {
+        setError("An unexpected error occurred when selling shares.");
+      }
+    }
   };
   
 
@@ -385,7 +467,7 @@ export default function TradeForm() {
               {tradeType === 'Buy' 
                 ? computedShares.toFixed(2)
                 : selectedAnswer 
-                  ? `$${(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
+                  ? `${(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
                   : '$0.00'
               }
             </span>
@@ -398,17 +480,30 @@ export default function TradeForm() {
                 : '0¢'}
             </span>
           </div>
+          
+          {/* Show user's current position for this outcome */}
+          {selectedAnswer && (
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-400">Your position</span>
+              <span className="text-white">
+                {userShares[selectedAnswer.id]?.toFixed(2) || '0'} shares
+              </span>
+            </div>
+          )}
+          
           <div className="flex justify-between">
             <span className="text-gray-400">
               {tradeType === 'Buy' 
                 ? `Payout if ${selectedAnswer?.name || 'outcome'} wins`
-                : 'Total shares after sale'
+                : 'Shares remaining after sale'
               }
             </span>
             <span className="text-white">
               {tradeType === 'Buy'
-                ? `$${(computedShares * 1).toFixed(2)}`
-                : '0'
+                ? `${(computedShares * 1).toFixed(2)}`
+                : selectedAnswer 
+                  ? `${Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice).toFixed(2)}`
+                  : '0'
               }
             </span>
           </div>
@@ -417,11 +512,27 @@ export default function TradeForm() {
         {/* Action Button */}
         <button 
           onClick={tradeType === 'Buy' ? handlePrediction : handleSell}
-          className="w-full bg-blue-600 text-white py-4 rounded-lg hover:bg-blue-700 transition-colors"
-          disabled={!selectedAnswer || totalPrice <= 0}
+          className={`w-full py-4 rounded-lg transition-colors ${
+            !selectedAnswer || totalPrice <= 0 || 
+            (tradeType === 'Sell' && selectedAnswer && (!userShares[selectedAnswer.id] || userShares[selectedAnswer.id] < totalPrice))
+              ? 'bg-gray-600 cursor-not-allowed opacity-50' 
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+          disabled={
+            !selectedAnswer || 
+            totalPrice <= 0 || 
+            (tradeType === 'Sell' && selectedAnswer && (!userShares[selectedAnswer.id] || userShares[selectedAnswer.id] < totalPrice))
+          }
         >
           {tradeType === 'Buy' ? 'Buy' : 'Sell'} {selectedAnswer?.name || 'Outcome'}
         </button>
+        
+        {/* Show helpful message if selling is disabled */}
+        {tradeType === 'Sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && userShares[selectedAnswer.id] < totalPrice && (
+          <p className="text-yellow-500 text-sm mt-2 text-center">
+            You only own {userShares[selectedAnswer.id]?.toFixed(2) || '0'} shares of {selectedAnswer.name}
+          </p>
+        )}
 
         {/* Error/Success Messages */}
         {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
