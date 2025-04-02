@@ -24,9 +24,28 @@ interface Answer {
 
 export default function TradeForm() {
   const { id } = useParams();
+  // Configuration constants - these could be moved to a config file
+  const DEFAULT_PRICE_INPUT = 10;
+  /*
+  const DEFAULT_THEME = {
+    bgPrimary: 'bg-[#1E1E1E]',
+    bgSecondary: 'bg-[#2C2C2C]',
+    bgHover: 'bg-[#3C3C3C]',
+    borderColor: 'border-[#2C2C2C]',
+    activeBtn: 'bg-blue-600',
+    hoverBtn: 'hover:bg-blue-700',
+    disabledBtn: 'bg-gray-600 opacity-50 cursor-not-allowed',
+    textPrimary: 'text-white',
+    textSecondary: 'text-gray-400',
+    success: 'text-green-500',
+    error: 'text-red-500',
+    warning: 'text-yellow-500'
+  };
+  */
+
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(10); // Default to $10
+  const [totalPrice, setTotalPrice] = useState<number>(DEFAULT_PRICE_INPUT);
   const [computedShares, setComputedShares] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -230,7 +249,7 @@ export default function TradeForm() {
       }
   
       setSuccess(
-        `Prediction successful! You spent $${totalPrice.toFixed(2)} to purchase ${sharesPurchased.toFixed(2)} shares.`
+        `Prediction successful! You spent ${totalPrice.toFixed(2)} to purchase ${sharesPurchased.toFixed(2)} shares.`
       );
   
       // Refresh market data
@@ -238,7 +257,7 @@ export default function TradeForm() {
   
       // Reset selection and total price
       setSelectedAnswer(null);
-      setTotalPrice(10);
+      setTotalPrice(DEFAULT_PRICE_INPUT);
     } catch (e: unknown) {
       if (e instanceof Error) {
         setError(`Error making prediction: ${e.message}`);
@@ -528,9 +547,12 @@ export default function TradeForm() {
         </button>
         
         {/* Show helpful message if selling is disabled */}
-        {tradeType === 'Sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && userShares[selectedAnswer.id] < totalPrice && (
+        {tradeType === 'Sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && (
           <p className="text-yellow-500 text-sm mt-2 text-center">
-            You only own {userShares[selectedAnswer.id]?.toFixed(2) || '0'} shares of {selectedAnswer.name}
+            {userShares[selectedAnswer.id] <= 0 
+              ? `You do not own any shares of ${selectedAnswer.name}`
+              : `You only own ${userShares[selectedAnswer.id]?.toFixed(2)} shares of ${selectedAnswer.name}`
+            }
           </p>
         )}
 
