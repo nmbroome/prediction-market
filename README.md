@@ -38,12 +38,27 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Roadmap
 
-- Improve market resolution mechanism
-- Add market categories and search functionality 
-- Implement admin panel for market management
-- Add liquidity provider incentives
-- Create mobile-responsive design improvements
-- Implement on-chain settlement (optional)
+- [ ] Add price charts to markets
+- [ ] Make sure market annullment settles at initial market odds
+- [ ] Systematize CSS to make it more object oriented
+- [ ] Add combinatorial markets
+- [ ] Add scalar markets
+- [ ] Add additional market maker algorithms
+    - [ ] DPM - Dyanmic Parimutual
+    - [ ] LMSR - Logarithmic Market scoring rules
+    - [ ] Maniswap
+    - [ ] pm-AMM https://www.paradigm.xyz/2024/11/pm-amm
+- [ ] Add multiple choice markets
+- [ ] Show the user how the odds change prior to the trade
+- [ ] Show leaderboard changes
+- [ ] Calibration page (https://manifold.markets/calibration)
+- [ ] Recurring markets
+- [ ] Verify PNL calculations when a user adds to their position
+- [ ] Conditional Tokens
+- [ ] Second order forecasting markets
+    - How much will the forecasts for US GDP in 2024 and 2025 be correlated over the next year?
+    - How many forecasts will the question "What will be the GDP of the US in 2024?" receive in total?
+    - If the question “What is the chance that a Republican will win the 2028 Presidential Election?” was posted to Manifold, with a subsidy of 100k Mana, what would the prediction be, after 1 month?”
 
 ## Database Schema
 
@@ -106,12 +121,12 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Development Status
 
+### April 2, 2025
+- [Current development in progress]
+
 ### April 1, 2025
 - Core market creation functionality is implemented
 - Trading interface for buying and selling positions is working
 - User authentication and profiles are functional
 - Market list and details pages are complete
 - PNL calculation is implemented but needs refinement
-
-### April 2, 2025
-- [Current development in progress]
