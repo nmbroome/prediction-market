@@ -28,13 +28,61 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Project Structure
 
-- `/src/app`: Next.js app router pages
-- `/src/components`: Reusable React components 
+### Frontend Structure
+- `/src/app`: Next.js app router pages and routes
+  - `/app/page.tsx`: Main landing page showing markets list
+  - `/app/markets`: Markets browsing pages
+    - `/app/markets/[id]/page.tsx`: Individual market details and trading interface
+  - `/app/profile/page.tsx`: User profile dashboard 
+  - `/app/market_maker/page.tsx`: Testing page for market maker algorithms
+  - `/app/auth`: Authentication-related pages
+    - `/app/auth/callback/route.ts`: OAuth callback route
+    - `/app/auth/auth-error/page.tsx`: Error handling for auth
+  - `/app/login` & `/app/signup`: User authentication pages
+  - `/app/layout.tsx`: Root layout with global styling and navigation
+
+### Components
+- `/src/components`: Reusable React components
+  - `TradeForm.tsx`: Core trading interface for buying/selling shares
+  - `MarketsList.tsx`: Displays filterable list of available markets
+  - `MarketCard.tsx`: Card component for market preview
+  - `CreateMarket.tsx`: Form for creating new prediction markets
+  - `CPMM.tsx`: Component handling constant product market maker logic
+  - `TradeHistory.tsx`: Displays user's trading history
+  - `EditProfileModal.tsx`: Modal for profile editing
+  - `PredictionHistory.tsx`: Component for viewing prediction history
+  - `Leaderboard.tsx`: Displays user rankings
+  - `navbar.tsx`: Site-wide navigation component
+  - Authentication components:
+    - `login-button.tsx` & `logout-button.tsx`: Authentication controls
+
+### Business Logic
 - `/src/lib`: Utility functions and business logic
   - `/lib/marketMakers.ts`: Implementation of market maker algorithms
+    - `constantProductMarketMaker()`: Core function for CPMM calculations
   - `/lib/predictions.ts`: Trading functionality
+    - `addPrediction()`: Handles trade execution and database updates
   - `/lib/calculatePNL.ts`: Profit and loss calculations
+  - `/lib/addMarket.ts`: Functions for creating new markets
+  - `/lib/addAnswers.ts`: Functions for adding outcomes to markets
+  - `/lib/getMarkets.ts`: Functions for retrieving market data
+  - `/lib/constants.ts`: Application-wide constants like market tags
+  - `/lib/types.ts`: TypeScript type definitions
+  - `/lib/supabase`: Supabase client initialization
+    - `browser-client.ts`: Client for browser environment
+    - `server-client.ts`: Client for server environment
+    - `createClient.ts`: General client creation
+
+### Static Assets
 - `/public`: Static assets
+  - SVG icons: `file.svg`, `globe.svg`, `window.svg`, etc.
+
+### Middleware and Configuration
+- `/src/middleware.ts`: Next.js middleware for route protection
+- `next.config.ts`: Next.js configuration
+- `tailwind.config.ts`: Tailwind CSS configuration
+- `postcss.config.mjs`: PostCSS configuration
+- `tsconfig.json`: TypeScript configuration
 
 ## Roadmap
 
@@ -58,7 +106,7 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - [ ] Second order forecasting markets
     - How much will the forecasts for US GDP in 2024 and 2025 be correlated over the next year?
     - How many forecasts will the question "What will be the GDP of the US in 2024?" receive in total?
-    - If the question “What is the chance that a Republican will win the 2028 Presidential Election?” was posted to Manifold, with a subsidy of 100k Mana, what would the prediction be, after 1 month?”
+    - If the question "What is the chance that a Republican will win the 2028 Presidential Election?" was posted to Manifold, with a subsidy of 100k Mana, what would the prediction be, after 1 month?"
 
 ## Database Schema
 
