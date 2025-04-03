@@ -1,10 +1,16 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import supabase from "@/lib/supabase/createClient";
 
 interface Outcome {
   name: string;
   tokens: number;
+}
+
+interface Prediction {
+  predict_amt: number;
 }
 
 interface MarketCardProps {
@@ -18,6 +24,54 @@ export default function MarketCard({
   name,
   outcomes = []
 }: MarketCardProps) {
+  const [marketVolume, setMarketVolume] = useState<number | null>(null);
+  const [tradeCount, setTradeCount] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Fetch market predictions to calculate volume
+  useEffect(() => {
+    async function fetchMarketVolume() {
+      try {
+        const { data, error } = await supabase
+          .from("predictions")
+          .select("predict_amt")
+          .eq("market_id", id);
+
+        if (error) {
+          console.error("Error fetching market predictions:", error.message);
+          setIsLoading(false);
+          return;
+        }
+
+        // Calculate the total volume by summing all prediction amounts
+        const totalVolume = data.reduce(
+          (sum: number, prediction: Prediction) => sum + Math.abs(prediction.predict_amt),
+          0
+        );
+        
+        // Set the total number of trades
+        setTradeCount(data.length);
+        setMarketVolume(totalVolume);
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch market volume:", err);
+        setIsLoading(false);
+      }
+    }
+
+    fetchMarketVolume();
+  }, [id]);
+
+  // Format currency values
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0 
+    }).format(value);
+  };
+
   // Ensure "Yes" and "No" are the first two outcomes
   const sortedOutcomes = [
     ...outcomes.filter(outcome => outcome.name.toLowerCase() === "yes"),
@@ -60,9 +114,22 @@ export default function MarketCard({
             </div>
           )}
 
-          {/* Total market value */}
-          <div className="text-center text-sm text-gray-500">
-            Total Market: $716,476
+          {/* Market stats - volume and trade count */}
+          <div className="flex flex-col space-y-1">
+            <div className="text-center text-sm text-gray-500">
+              {isLoading ? (
+                "Loading market data..."
+              ) : (
+                `Volume: ${marketVolume !== null ? formatCurrency(marketVolume) : "$0"}`
+              )}
+            </div>
+            <div className="text-center text-sm text-gray-500">
+              {isLoading ? (
+                ""
+              ) : (
+                `Trades: ${tradeCount}`
+              )}
+            </div>
           </div>
         </div>
       </div>
