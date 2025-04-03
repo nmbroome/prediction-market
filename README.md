@@ -86,6 +86,10 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Roadmap
 
+- [x] Update volume traded and markets traded on profile
+- [ ] Pull market and outcome name in trade history
+- [ ] Fix status on trade history
+- [ ] Update predictions schema to store type of trade(buy/sell)
 - [ ] Add price charts to markets
 - [ ] Make sure market annullment settles at initial market odds
 - [ ] Systematize CSS to make it more object oriented
@@ -170,7 +174,11 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 ## Development Status
 
 ### April 2, 2025
-- [Current development in progress]
+- Update MarketCard.tsx to display total market volume and number of trades
+- Remove placeholder values from TradeForm.tsx
+
+### April 2, 2025
+- Update readme to provide better context to LLMs
 
 ### April 1, 2025
 - Core market creation functionality is implemented
