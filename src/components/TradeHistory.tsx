@@ -25,12 +25,16 @@ interface Prediction {
   user_id: string;
   market_id: number;
   market?: Market;
+  market?: Market;
   outcome_id: number;
+  outcome?: Outcome;
   outcome?: Outcome;
   predict_amt: number;
   return_amt: number;
   buy_price: number;
+  buy_price: number;
   created_at: string;
+  outcomes?: Outcome[]; // All outcomes in the market
   outcomes?: Outcome[]; // All outcomes in the market
 }
 
@@ -48,6 +52,7 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
       setLoading(true);
       setError(null);
       try {
+        // Fetch predictions with market and outcome details
         // Fetch predictions with market and outcome details
         const { data, error } = await supabase
           .from("predictions")
@@ -145,6 +150,16 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
       } finally {
         setLoading(false);
       }
+        const errorMessage = err instanceof Error ? err.message : "Error fetching trade history";
+        setError(errorMessage);
+        console.error("Error fetching trade history:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (userId) {
+      fetchPredictions();
     }
 
     if (userId) {
@@ -180,7 +195,36 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
 
   if (loading) return <div className="p-4 text-center text-white">Loading trade history...</div>;
   if (error) return <div className="p-4 text-center text-red-500">Error: {error}</div>;
+  // Calculate odds for an outcome based on all outcomes in the market
+  const calculateOdds = (prediction: Prediction): string => {
+    if (!prediction.outcomes || prediction.outcomes.length === 0) return "N/A";
+    
+    const totalTokens = prediction.outcomes.reduce((sum, o) => sum + o.tokens, 0);
+    if (totalTokens === 0) return "0%";
+    
+    const outcome = prediction.outcomes.find(o => o.id === prediction.outcome_id);
+    if (!outcome) return "N/A";
+    
+    const odds = (outcome.tokens / totalTokens) * 100;
+    return `${odds.toFixed(0)}%`;
+  };
+
+  // Determine market status
+  const getMarketStatus = (prediction: Prediction): 'open' | 'closed' | 'resolved' => {
+    if (!prediction.market) return 'closed';
+    
+    const closeDate = prediction.market.close_date ? new Date(prediction.market.close_date) : null;
+    const now = new Date();
+    
+    if (!closeDate) return 'open';
+    
+    return closeDate > now ? 'open' : 'resolved';
+  };
+
+  if (loading) return <div className="p-4 text-center text-white">Loading trade history...</div>;
+  if (error) return <div className="p-4 text-center text-red-500">Error: {error}</div>;
   if (predictions.length === 0)
+    return <div className="p-4 text-center text-white">No trade history available.</div>;
     return <div className="p-4 text-center text-white">No trade history available.</div>;
 
   return (

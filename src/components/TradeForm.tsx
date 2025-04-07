@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import supabase from "@/lib/supabase/createClient";
 import { addPrediction } from "@/lib/predictions";
-import { constantProductMarketMaker } from "@/lib/marketMakers"; // import your market maker function
+import { constantProductMarketMaker } from "@/lib/marketMakers";
 import { User } from "@supabase/supabase-js";
 
 interface Market {
@@ -18,30 +18,44 @@ interface Market {
 interface Answer {
   id: number;
   name: string;
-  tokens: number; // current token pool for this outcome
+  tokens: number;
   market_id: number;
 }
 
 export default function TradeForm() {
   const { id } = useParams();
+  
+  // State variables
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [totalPrice, setTotalPrice] = useState<number>(10); // tokens the user will spend
-  const [computedShares, setComputedShares] = useState<number>(0); // computed shares purchased
+  const [totalPrice, setTotalPrice] = useState<number>(10);
+  const [computedShares, setComputedShares] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [tradeType, setTradeType] = useState<'Buy' | 'Sell'>('Buy');
+  
+  // Loading states
+  const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
+  const [isMarketLoading, setIsMarketLoading] = useState<boolean>(true);
+  const [isSharesLoading, setIsSharesLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // State to track user's share balances
+  const [userShares, setUserShares] = useState<{[outcomeId: number]: number}>({});
 
   // Fetch logged-in user.
   useEffect(() => {
     async function fetchUser() {
+      setIsUserLoading(true);
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error) {
         setError(`Error fetching user: ${error.message}`);
       } else {
         setUser(user);
       }
+      setIsUserLoading(false);
     }
     fetchUser();
   }, []);
@@ -49,6 +63,7 @@ export default function TradeForm() {
   // Fetch market details and outcomes.
   const fetchMarketData = useCallback(async () => {
     if (!id) return;
+    setIsMarketLoading(true);
     try {
       const { data: marketData, error: marketError } = await supabase
         .from("markets")
@@ -70,12 +85,56 @@ export default function TradeForm() {
       } else {
         setError("Error fetching market data.");
       }
+    } finally {
+      setIsMarketLoading(false);
     }
   }, [id]);
 
   useEffect(() => {
     fetchMarketData();
   }, [fetchMarketData]);
+  
+  // Fetch user's shares whenever user or market changes
+  useEffect(() => {
+    async function fetchUserShares() {
+      if (!user || !market) return;
+      
+      setIsSharesLoading(true);
+      try {
+        // Get all user's predictions for this market
+        const { data, error } = await supabase
+          .from("predictions")
+          .select("outcome_id, return_amt")
+          .eq("user_id", user.id)
+          .eq("market_id", market.id);
+          
+        if (error) throw error;
+        
+        // Calculate share balance for each outcome
+        const shares: {[outcomeId: number]: number} = {};
+        
+        // Initialize with zero for all answers
+        answers.forEach(answer => {
+          shares[answer.id] = 0;
+        });
+        
+        // Sum up shares for each outcome
+        data?.forEach(pred => {
+          const outcomeId = pred.outcome_id;
+          const amount = pred.return_amt || 0;
+          shares[outcomeId] = (shares[outcomeId] || 0) + amount;
+        });
+        
+        setUserShares(shares);
+      } catch (e) {
+        console.error("Error fetching user shares:", e);
+      } finally {
+        setIsSharesLoading(false);
+      }
+    }
+    
+    fetchUserShares();
+  }, [user, market, answers]);
 
   // Re-calculate the computed shares using the constantProductMarketMaker function.
   // This function assumes a binary market (exactly 2 outcomes).
@@ -112,25 +171,31 @@ export default function TradeForm() {
   const handlePrediction = async () => {
     setError(null);
     setSuccess(null);
+    setIsSubmitting(true);
   
     if (!user) {
       setError("User is not logged in.");
+      setIsSubmitting(false);
       return;
     }
     if (!market) {
       setError("Market data is not available.");
+      setIsSubmitting(false);
       return;
     }
     if (!selectedAnswer) {
       setError("Please select an outcome.");
+      setIsSubmitting(false);
       return;
     }
     if (totalPrice <= 0) {
       setError("Please enter a total price greater than 0.");
+      setIsSubmitting(false);
       return;
     }
     if (answers.length !== 2) {
       setError("This market currently supports only binary outcomes.");
+      setIsSubmitting(false);
       return;
     }
     try {
@@ -149,15 +214,16 @@ export default function TradeForm() {
         totalPrice
       );
   
-      // Insert the prediction record
+      // FIXED: Now using totalPrice as the dollar amount spent
+      // and sharesPurchased as the number of shares received
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
         outcome_id: selectedAnswer.id,
-        predict_amt: sharesPurchased, // Number of shares purchased
+        predict_amt: totalPrice, // Dollar amount spent (not shares)
         buy_price:
           selectedAnswer.tokens / (selectedAnswer.tokens + otherAnswer.tokens), // Current probability
-        return_amt: sharesPurchased, // Assuming payout is 1 per share
+        return_amt: sharesPurchased, // Number of shares received
       });
   
       // Update both outcomes in the database
@@ -173,7 +239,7 @@ export default function TradeForm() {
         .eq("id", otherAnswer.id);
       if (updateError2) throw new Error(updateError2.message);
   
-      // **Now update the market token pool**
+      // Update the market token pool
       const newMarketTokenPool = newOutcome1Tokens + newOutcome2Tokens;
   
       const { error: marketUpdateError } = await supabase
@@ -186,7 +252,7 @@ export default function TradeForm() {
       }
   
       setSuccess(
-        `Prediction successful! You spent ${totalPrice.toFixed(2)} tokens to purchase ${sharesPurchased.toFixed(2)} shares.`
+        `Prediction successful! You spent ${totalPrice.toFixed(2)} to purchase ${sharesPurchased.toFixed(2)} shares.`
       );
   
       // Refresh market data
@@ -201,6 +267,132 @@ export default function TradeForm() {
       } else {
         setError("Error making prediction.");
       }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleSell = async () => {
+    setError(null);
+    setSuccess(null);
+    setIsSubmitting(true);
+    
+    if (!user || !market || !selectedAnswer) {
+      setError("Missing user, market, or outcome.");
+      setIsSubmitting(false);
+      return;
+    }
+    const sellShares = totalPrice; // For selling, this is the number of shares to sell
+    
+    // Fetch user's current position for this specific outcome in this market
+    const { data: preds, error: fetchError } = await supabase
+      .from("predictions")
+      .select("return_amt, predict_amt")
+      .eq("user_id", user.id)
+      .eq("market_id", market.id)
+      .eq("outcome_id", selectedAnswer.id);
+  
+    if (fetchError) {
+      setError(fetchError.message);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Calculate net shares owned (buys minus sells) by summing return_amt values
+    const owned = preds?.reduce((total, p) => total + (p.return_amt ?? 0), 0) ?? 0;
+    
+    // Check if user has enough shares to sell
+    if (sellShares > owned) {
+      setError(`Not enough shares to sell. You own ${owned.toFixed(2)} shares of ${selectedAnswer.name}.`);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Only allow selling shares if the user has a positive balance
+    if (owned <= 0) {
+      setError(`You don't own any shares of ${selectedAnswer.name} to sell.`);
+      setIsSubmitting(false);
+      return;
+    }
+  
+    // Compute current price based on current token distribution
+    const price = selectedAnswer.tokens / totalOutcomeTokens;
+    
+    // Calculate dollar amount to receive from sale
+    const receivedAmount = price * sellShares;
+  
+    // Compute token changes using constant product market maker
+    const otherAnswer = answers.find((a) => a.id !== selectedAnswer.id);
+    if (!otherAnswer) {
+      setError("Could not determine the opposing outcome.");
+      setIsSubmitting(false);
+      return;
+    }
+    
+    // Calculate new token pools based on removing liquidity
+    const k = selectedAnswer.tokens * otherAnswer.tokens; // Constant product
+    
+    // When selling, we're removing tokens from the selected outcome's pool
+    // The amount to remove is proportional to the current price
+    const tokenRemoval = receivedAmount; // Dollar amount received is liquidity removed
+    const newSelectedTokens = selectedAnswer.tokens - tokenRemoval;
+    
+    // Maintain the constant product k by adjusting the other token pool
+    const newOtherTokens = k / newSelectedTokens;
+  
+    // Record the sell transaction with correct values
+    try {
+      await addPrediction({
+        user_id: user.id,
+        market_id: market.id,
+        outcome_id: selectedAnswer.id,
+        predict_amt: -receivedAmount, // Negative dollar amount (user receives this)
+        buy_price: price,
+        return_amt: -sellShares, // Negative shares (shares sold)
+      });
+    
+      // Update outcome tokens in the database
+      const { error: updateError1 } = await supabase
+        .from("outcomes")
+        .update({ tokens: newSelectedTokens })
+        .eq("id", selectedAnswer.id);
+      
+      if (updateError1) throw new Error(`Failed to update outcome tokens: ${updateError1.message}`);
+      
+      const { error: updateError2 } = await supabase
+        .from("outcomes")
+        .update({ tokens: newOtherTokens })
+        .eq("id", otherAnswer.id);
+        
+      if (updateError2) throw new Error(`Failed to update opposing outcome tokens: ${updateError2.message}`);
+      
+      // Update market token pool
+      const newMarketTokenPool = newSelectedTokens + newOtherTokens;
+      const { error: marketUpdateError } = await supabase
+        .from("markets")
+        .update({ token_pool: newMarketTokenPool })
+        .eq("id", market.id);
+      
+      if (marketUpdateError) {
+        throw new Error(`Failed to update market token_pool: ${marketUpdateError.message}`);
+      }
+    
+      setSuccess(`Successfully sold ${sellShares.toFixed(2)} shares of ${selectedAnswer.name} and received ${receivedAmount.toFixed(2)}`);
+      
+      // Refresh market data to update UI with new odds
+      await fetchMarketData();
+      
+      // Reset form
+      setSelectedAnswer(null);
+      setTotalPrice(10);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        setError(`Error selling shares: ${e.message}`);
+      } else {
+        setError("An unexpected error occurred when selling shares.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -208,76 +400,232 @@ export default function TradeForm() {
   // Compute total tokens across all outcomes for display.
   const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
 
+  // Calculate market probability for each outcome
+  const getOutcomeProbability = (answer: Answer) => {
+    return totalOutcomeTokens > 0
+      ? ((answer.tokens / totalOutcomeTokens) * 100).toFixed(0)
+      : '0';
+  };
+
+  // Loading skeletons for different parts of the form
+  const LoadingSkeleton = () => (
+    <div className="animate-pulse">
+      <div className="h-4 bg-[#2C2C2C] rounded w-3/4 mb-4"></div>
+      <div className="h-10 bg-[#2C2C2C] rounded w-full mb-4"></div>
+      <div className="h-10 bg-[#2C2C2C] rounded w-full mb-4"></div>
+    </div>
+  );
+
+  const isLoading = isUserLoading || isMarketLoading;
+
   return (
-    <div className="p-6 border rounded mt-6">
-      <h2 className="text-xl font-semibold">Trade Your Prediction</h2>
-      <div className="mt-4">
-        <h3 className="text-lg font-medium">Select an Outcome</h3>
-        {answers.length > 0 ? (
-          <div className="flex flex-row gap-2 mt-2">
-            {answers.map((answer) => (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-lg border border-[#2C2C2C] p-6">
+        {/* Market Title */}
+        <div className="mb-6">
+          {isMarketLoading ? (
+            <div className="h-6 bg-[#2C2C2C] rounded w-2/3 animate-pulse"></div>
+          ) : (
+            <h2 className="text-white text-xl font-semibold">
+              {market?.name}
+            </h2>
+          )}
+        </div>
+
+        {/* Trade Type Selector */}
+        <div className="flex mb-6">
+          <button
+            onClick={() => setTradeType('Buy')}
+            className={`w-1/2 py-2 ${
+              tradeType === 'Buy' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-[#2C2C2C] text-gray-400'
+            } rounded-l-lg transition-colors`}
+            disabled={isLoading}
+          >
+            Buy
+          </button>
+          <button
+            onClick={() => setTradeType('Sell')}
+            className={`w-1/2 py-2 ${
+              tradeType === 'Sell' 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-[#2C2C2C] text-gray-400'
+            } rounded-r-lg transition-colors`}
+            disabled={isLoading}
+          >
+            Sell
+          </button>
+        </div>
+
+        {/* Outcome Buttons */}
+        <div className="flex gap-4 mb-6">
+          {isMarketLoading ? (
+            <>
+              <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
+              <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
+            </>
+          ) : answers.length > 0 ? (
+            answers.map((answer) => (
               <button
                 key={answer.id}
                 onClick={() => setSelectedAnswer(answer)}
-                className={`w-fit px-4 py-2 text-white rounded-lg shadow ${
+                className={`flex-1 py-3 rounded-lg transition-colors ${
                   selectedAnswer?.id === answer.id
-                    ? "bg-green-600"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-[#2C2C2C] text-gray-400 hover:bg-[#3C3C3C]'
                 }`}
+                disabled={isLoading}
               >
-                <span className="block text-lg font-medium">{answer.name}</span>
-                <span className="block text-sm">
-                  {totalOutcomeTokens > 0
-                    ? ((answer.tokens / totalOutcomeTokens) * 100).toFixed(2) +
-                      "%"
-                    : "N/A"}
-                </span>
+                <div className="flex justify-between px-4">
+                  <span>{answer.name}</span>
+                  <span>{getOutcomeProbability(answer)}¢</span>
+                </div>
               </button>
-            ))}
-          </div>
-        ) : (
-          <p>No outcomes available.</p>
-        )}
-      </div>
-      {selectedAnswer && (
-        <div className="mt-6">
-          <label htmlFor="totalPrice" className="block text-sm font-medium">
-            Total Price:
+            ))
+          ) : (
+            <div className="w-full text-center text-gray-400 py-3">
+              No outcomes available for this market
+            </div>
+          )}
+        </div>
+
+        {/* Amount Input */}
+        <div className="mb-6">
+          <label className="block text-gray-400 mb-2">
+            {tradeType === 'Buy' ? 'Amount to Spend ($)' : 'Shares to Sell'}
           </label>
-          <input
-            type="number"
-            id="totalPrice"
-            value={totalPrice}
-            onChange={(e) =>
-              setTotalPrice(e.target.value ? Number(e.target.value) : 0)
-            }
-            min="1"
-            className="mt-1 block w-full px-3 py-2 border rounded-md text-black"
-          />
-          <div className="mt-4">
-            <p>
-              <strong>Shares To Be Purchased (CPMM):</strong>{" "}
-              {computedShares.toFixed(2)} shares
-            </p>
-          </div>
-          <div className="mt-4 flex gap-4">
-            <button
-              onClick={handlePrediction}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
-            >
-              Submit Prediction
-            </button>
-            <button
-              onClick={() => setSelectedAnswer(null)}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700"
-            >
-              Cancel
-            </button>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              {tradeType === 'Buy' ? '$' : '#'}
+            </span>
+            <input
+              type="number"
+              value={totalPrice}
+              onChange={(e) => setTotalPrice(Number(e.target.value))}
+              className="w-full bg-[#2C2C2C] text-white py-3 pl-6 pr-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder="0"
+              disabled={isLoading}
+            />
           </div>
         </div>
-      )}
-      {error && <p className="mt-4 text-red-600">{error}</p>}
-      {success && <p className="mt-4 text-green-600">{success}</p>}
+
+        {/* Trade Details */}
+        <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
+          {isLoading ? (
+            <LoadingSkeleton />
+          ) : (
+            <>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">
+                  {tradeType === 'Buy' ? 'Contracts to Receive' : 'Estimated Payout'}
+                </span>
+                <span className="text-white">
+                  {tradeType === 'Buy' 
+                    ? computedShares.toFixed(2)
+                    : selectedAnswer 
+                      ? `${(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
+                      : '$0.00'
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Current odds</span>
+                <span className="text-white">
+                  {selectedAnswer 
+                    ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '¢'
+                    : '0¢'}
+                </span>
+              </div>
+              
+              {/* Show user's current position for this outcome */}
+              {selectedAnswer && (
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">Your position</span>
+                  {isSharesLoading ? (
+                    <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
+                  ) : (
+                    <span className="text-white">
+                      {userShares[selectedAnswer.id]?.toFixed(2) || '0'} shares
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex justify-between">
+                <span className="text-gray-400">
+                  {tradeType === 'Buy' 
+                    ? `Payout if ${selectedAnswer?.name || 'outcome'} wins`
+                    : 'Shares remaining after sale'
+                  }
+                </span>
+                <span className="text-white">
+                  {tradeType === 'Buy'
+                    ? `${(computedShares * 1).toFixed(2)}`
+                    : selectedAnswer 
+                      ? `${Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice).toFixed(2)}`
+                      : '0'
+                  }
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Action Button */}
+        <button 
+          onClick={tradeType === 'Buy' ? handlePrediction : handleSell}
+          className={`w-full py-4 rounded-lg transition-colors flex justify-center items-center ${
+            isLoading || isSubmitting || !selectedAnswer || totalPrice <= 0 || 
+            (tradeType === 'Sell' && selectedAnswer && (!userShares[selectedAnswer.id] || userShares[selectedAnswer.id] < totalPrice))
+              ? 'bg-gray-600 cursor-not-allowed opacity-50' 
+              : 'bg-blue-600 hover:bg-blue-700'
+          }`}
+          disabled={
+            isLoading || 
+            isSubmitting ||
+            !selectedAnswer || 
+            totalPrice <= 0 || 
+            (tradeType === 'Sell' && selectedAnswer && (!userShares[selectedAnswer.id] || userShares[selectedAnswer.id] < totalPrice))
+          }
+        >
+          {isSubmitting ? (
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            `${tradeType === 'Buy' ? 'Buy' : 'Sell'} ${selectedAnswer?.name || 'Outcome'}`
+          )}
+        </button>
+        
+        {/* Show helpful message if selling is disabled */}
+        {!isLoading && tradeType === 'Sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && (
+          <p className="text-yellow-500 text-sm mt-2 text-center">
+            {userShares[selectedAnswer.id] <= 0 
+              ? `You do not own any shares of ${selectedAnswer.name}`
+              : totalPrice > userShares[selectedAnswer.id]
+                ? `You only own ${userShares[selectedAnswer.id]?.toFixed(2)} shares of ${selectedAnswer.name}`
+                : null
+            }
+          </p>
+        )}
+
+        {/* Error/Success Messages */}
+        {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
+        {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
+        
+        {/* General loading indicator */}
+        {isLoading && (
+          <p className="mt-4 text-blue-400 text-center flex items-center justify-center">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading market data...
+          </p>
+        )}
+      </div>
     </div>
   );
 }
