@@ -9,7 +9,7 @@ interface Market {
   id: number;
   name: string;
   description: string;
-  status?: 'open' | 'closed' | 'resolved';
+  status?: string; // Using string to accommodate any status from database
   close_date?: string;
 }
 
@@ -48,12 +48,12 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
       setLoading(true);
       setError(null);
       try {
-        // Fetch predictions with market and outcome details
+        // Fetch predictions with market and outcome details - include any status field from markets
         const { data, error } = await supabase
           .from("predictions")
           .select(`
             *,
-            markets:markets(id, name, description, close_date),
+            markets:markets(id, name, description, close_date, status),
             outcomes:outcomes(id, name, tokens, market_id)
           `)
           .eq("user_id", userId)
@@ -76,6 +76,7 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
             name: string;
             description: string;
             close_date?: string;
+            status?: string;
           };
           outcomes: {
             id: number;
@@ -90,7 +91,8 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
         
         // Process the data to properly format it with nested market and outcome objects
         const processedData: Prediction[] = typedData.map((item) => {
-          return {
+          // Map raw data to our Prediction interface
+          const prediction: Prediction = {
             id: item.id,
             user_id: item.user_id,
             market_id: item.market_id,
@@ -99,9 +101,16 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
             return_amt: item.return_amt,
             buy_price: item.buy_price,
             created_at: item.created_at,
-            market: item.markets,
+            market: {
+              id: item.markets.id,
+              name: item.markets.name,
+              description: item.markets.description,
+              close_date: item.markets.close_date,
+              status: item.markets.status
+            },
             outcome: item.outcomes
           };
+          return prediction;
         });
 
         // For each prediction, fetch all outcomes in its market for calculating odds
@@ -170,12 +179,27 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
   const getMarketStatus = (prediction: Prediction): 'open' | 'closed' | 'resolved' => {
     if (!prediction.market) return 'closed';
     
+    // First check if the market has an explicit status field
+    if (prediction.market.status) {
+      // Convert any string status to our expected format
+      const status = prediction.market.status.toLowerCase();
+      if (status === 'open' || status === 'closed' || status === 'resolved') {
+        return status as 'open' | 'closed' | 'resolved';
+      }
+    }
+    
+    // If no explicit status or invalid status, determine based on close date
     const closeDate = prediction.market.close_date ? new Date(prediction.market.close_date) : null;
     const now = new Date();
     
+    // If no close date is set, default to open status
     if (!closeDate) return 'open';
     
-    return closeDate > now ? 'open' : 'resolved';
+    // If current date is past the close date, the market is resolved
+    if (now > closeDate) return 'resolved';
+    
+    // Otherwise, market is still open
+    return 'open';
   };
 
   if (loading) return <div className="p-4 text-center text-white">Loading trade history...</div>;
