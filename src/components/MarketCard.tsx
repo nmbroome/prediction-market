@@ -10,7 +10,8 @@ interface Outcome {
 }
 
 interface Prediction {
-  predict_amt: number;
+  trade_value: number;
+  trade_type: 'buy' | 'sell';
 }
 
 interface MarketCardProps {
@@ -34,7 +35,7 @@ export default function MarketCard({
       try {
         const { data, error } = await supabase
           .from("predictions")
-          .select("predict_amt")
+          .select("trade_value, trade_type")
           .eq("market_id", id);
 
         if (error) {
@@ -43,14 +44,17 @@ export default function MarketCard({
           return;
         }
 
-        // Calculate the total volume by summing all prediction amounts
-        const totalVolume = data.reduce(
-          (sum: number, prediction: Prediction) => sum + Math.abs(prediction.predict_amt),
+        // Properly type the data
+        const typedData = data as Prediction[];
+
+        // Calculate the total volume by summing all trade_value amounts (absolute values)
+        const totalVolume = typedData.reduce(
+          (sum: number, prediction: Prediction) => sum + Math.abs(prediction.trade_value),
           0
         );
         
         // Set the total number of trades
-        setTradeCount(data.length);
+        setTradeCount(typedData.length);
         setMarketVolume(totalVolume);
         setIsLoading(false);
       } catch (err) {

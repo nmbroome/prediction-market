@@ -5,8 +5,10 @@ interface Prediction {
   user_id: string;
   market_id: number;
   outcome_id: number;
-  predict_amt: number;
-  return_amt: number;
+  shares_amt: number;
+  market_odds: number;
+  trade_value: number;
+  trade_type: 'buy' | 'sell';
   created_at: string;
 }
 
@@ -27,8 +29,10 @@ export async function calculatePNL(userId: string): Promise<{
   const predictions = data as Prediction[];
 
   // Calculate total PNL by summing up the profit/loss of each trade
+  // For buys: trade_value is negative (money spent)
+  // For sells: trade_value is positive (money received)
   const totalPNL = predictions.reduce((acc, trade) => {
-    return acc + (trade.return_amt - trade.predict_amt);
+    return acc + trade.trade_value;
   }, 0);
 
   // Calculate the percentage change based on a starting amount of 100 tokens

@@ -88,7 +88,7 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 - [x] Update volume traded and markets traded on profile
 - [x] Pull market and outcome name in trade history
-- [ ] Fix status on trade history
+- [x] Fix status on trade history
 - [ ] Update predictions schema to store type of trade(buy/sell)
 - [ ] Add price charts to markets
 - [ ] Make sure market annullment settles at initial market odds
@@ -138,14 +138,14 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 | Field | Description |
 |-------|-------------|
 | id | Unique identifier for the prediction (trade) |
-| return_amt | Amount of outcome shares received |
 | user_id | User who made the prediction |
 | market_id | Market the prediction was made on |
 | created_at | Timestamp of the prediction |
 | outcome_id | The outcome that was predicted |
-| predict_amt | Amount of currency spent on the prediction |
-| buy_price | Price at time of purchase |
-| sell_price | Price at time of sale (if applicable) |
+| shares_amt | Amount of outcome shares traded (bought or sold) |
+| market_odds | Market odds at the time of the trade |
+| trade_value | Value of the trade (negative for buys, positive for sells) |
+| trade_type | Type of trade ("buy" or "sell") |
 
 ### Profiles
 | Field | Description |
@@ -177,7 +177,7 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - Update TradeHistory.tsx to display names of markets and outcomes instead of ID
 - Update TradeHistory.tsx to show market status correctly
 
-### April 2, 2025
+### April 3, 2025
 - Update MarketCard.tsx to display total market volume and number of trades
 - Remove placeholder values from TradeForm.tsx
 

@@ -9,14 +9,14 @@ interface Market {
   id: number;
   name: string;
   description: string;
-  status?: string; // Using string to accommodate any status from database
+  status?: string; 
   close_date?: string;
 }
 
 interface Outcome {
   id: number;
   name: string;
-  market_id?: number; // Making market_id optional to accommodate the data structure
+  market_id?: number;
   tokens: number;
 }
 
@@ -27,9 +27,10 @@ interface Prediction {
   market?: Market;
   outcome_id: number;
   outcome?: Outcome;
-  predict_amt: number;
-  return_amt: number;
-  buy_price: number;
+  shares_amt: number;
+  market_odds: number;
+  trade_value: number;
+  trade_type: 'buy' | 'sell';
   created_at: string;
   outcomes?: Outcome[]; // All outcomes in the market
 }
@@ -48,7 +49,7 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
       setLoading(true);
       setError(null);
       try {
-        // Fetch predictions with market and outcome details - include any status field from markets
+        // Fetch predictions with market and outcome details
         const { data, error } = await supabase
           .from("predictions")
           .select(`
@@ -67,9 +68,10 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
           user_id: string;
           market_id: number;
           outcome_id: number;
-          predict_amt: number;
-          return_amt: number;
-          buy_price: number;
+          shares_amt: number;
+          market_odds: number;
+          trade_value: number;
+          trade_type: 'buy' | 'sell';
           created_at: string;
           markets: {
             id: number;
@@ -97,9 +99,10 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
             user_id: item.user_id,
             market_id: item.market_id,
             outcome_id: item.outcome_id,
-            predict_amt: item.predict_amt,
-            return_amt: item.return_amt,
-            buy_price: item.buy_price,
+            shares_amt: item.shares_amt,
+            market_odds: item.market_odds,
+            trade_value: item.trade_value,
+            trade_type: item.trade_type,
             created_at: item.created_at,
             market: {
               id: item.markets.id,
@@ -161,8 +164,8 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
     }
   }, [userId]);
 
-  // Calculate odds for an outcome based on all outcomes in the market
-  const calculateOdds = (prediction: Prediction): string => {
+  // Calculate current odds for an outcome based on all outcomes in the market
+  const calculateCurrentOdds = (prediction: Prediction): string => {
     if (!prediction.outcomes || prediction.outcomes.length === 0) return "N/A";
     
     const totalTokens = prediction.outcomes.reduce((sum, o) => sum + o.tokens, 0);
@@ -202,6 +205,16 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
     return 'open';
   };
 
+  // Format the trade value based on trade type
+  const formatTradeValue = (prediction: Prediction): string => {
+    const amount = Math.abs(prediction.trade_value);
+    if (prediction.trade_type === 'buy') {
+      return `-$${amount.toFixed(2)}`;
+    } else {
+      return `+$${amount.toFixed(2)}`;
+    }
+  };
+
   if (loading) return <div className="p-4 text-center text-white">Loading trade history...</div>;
   if (error) return <div className="p-4 text-center text-red-500">Error: {error}</div>;
   if (predictions.length === 0)
@@ -217,9 +230,12 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Market</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Position</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Amount</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Shares</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Value</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Odds</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Current Odds</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Market Status</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Date</th>
             </tr>
           </thead>
@@ -253,12 +269,27 @@ export default function TradeHistory({ userId }: TradeHistoryProps) {
                     </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <span className={`${prediction.predict_amt > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {prediction.predict_amt > 0 ? '+' : ''}{prediction.predict_amt.toFixed(2)}
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      prediction.trade_type === 'buy' 
+                        ? 'bg-green-900 text-green-200' 
+                        : 'bg-purple-900 text-purple-200'
+                    }`}>
+                      {prediction.trade_type.toUpperCase()}
                     </span>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-white">
-                    {calculateOdds(prediction)}
+                    {prediction.shares_amt.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className={`${prediction.trade_type === 'sell' ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatTradeValue(prediction)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-white">
+                    {(prediction.market_odds * 100).toFixed(0)}%
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-white">
+                    {calculateCurrentOdds(prediction)}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span 
