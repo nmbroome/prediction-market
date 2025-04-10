@@ -90,7 +90,7 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - [x] Pull market and outcome name in trade history
 - [x] Fix status on trade history
 - [x] Update predictions schema to store type of trade(buy/sell)
-- [ ] Verify PNL calculations when a user adds to their position
+- [x] Verify PNL calculations when a user adds to their position
 - [ ] Collapse trades of same outcome in trade history
 - [ ] Show the user how the odds change prior to the trade
 - [ ] Add price charts to markets
@@ -173,6 +173,10 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 | user_id | User reference |
 
 ## Development Status
+
+### April 9, 2025
+- Fix rounding error with displaying and selling shares
+- Add sell all button to trade form
 
 ### April 8, 2025
 - Update prediction schema to simplify logic
