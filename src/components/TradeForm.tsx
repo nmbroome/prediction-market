@@ -505,6 +505,17 @@ export default function TradeForm() {
           </div>
         </div>
 
+        {/* Sell All button - only show when in sell mode and there's a selected outcome with shares */}
+        {tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] > 0 && (
+          <button
+            onClick={() => setTotalPrice(formatShares(userShares[selectedAnswer.id] || 0))}
+            className="mb-4 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+            disabled={isLoading || isSubmitting}
+          >
+            Sell All ({formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares)
+          </button>
+        )}
+
         {/* Trade Details */}
         <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
           {isLoading ? (
