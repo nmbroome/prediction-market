@@ -90,9 +90,12 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - [x] Pull market and outcome name in trade history
 - [x] Fix status on trade history
 - [x] Update predictions schema to store type of trade(buy/sell)
+- [ ] Verify PNL calculations when a user adds to their position
 - [ ] Collapse trades of same outcome in trade history
+- [ ] Show the user how the odds change prior to the trade
 - [ ] Add price charts to markets
 - [ ] Make sure market annullment settles at initial market odds
+- [ ] Recurring markets
 - [ ] Systematize CSS to make it more object oriented
 - [ ] Add combinatorial markets
 - [ ] Add scalar markets
@@ -102,11 +105,8 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
     - [ ] Maniswap
     - [ ] pm-AMM https://www.paradigm.xyz/2024/11/pm-amm
 - [ ] Add multiple choice markets
-- [ ] Show the user how the odds change prior to the trade
 - [ ] Show leaderboard changes
 - [ ] Calibration page (https://manifold.markets/calibration)
-- [ ] Recurring markets
-- [ ] Verify PNL calculations when a user adds to their position
 - [ ] Conditional Tokens
 - [ ] Second order forecasting markets
     - How much will the forecasts for US GDP in 2024 and 2025 be correlated over the next year?

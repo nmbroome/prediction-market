@@ -172,6 +172,11 @@ export default function TradeForm() {
     }
   }, [selectedAnswer, totalPrice, answers]);
 
+  // Format a number to a fixed number of decimal places (for display and comparison)
+  const formatShares = (value: number, decimals: number = 2): number => {
+    return parseFloat(value.toFixed(decimals));
+  };
+
   // Handle prediction submission using the constantProductMarketMaker function.
   const handleBuy = async () => {
     setError(null);
@@ -292,16 +297,19 @@ export default function TradeForm() {
     const sellShares = totalPrice; // For selling, this is the number of shares to sell
     
     // Check if user has enough shares to sell
+    // Using the same formatting function as display to ensure consistency
     const owned = userShares[selectedAnswer.id] || 0;
+    const formattedOwned = formatShares(owned);
+    const formattedSellShares = formatShares(sellShares);
     
-    if (sellShares > owned) {
-      setError(`Not enough shares to sell. You own ${owned.toFixed(2)} shares of ${selectedAnswer.name}.`);
+    if (formattedSellShares > formattedOwned) {
+      setError(`Not enough shares to sell. You own ${formattedOwned.toFixed(2)} shares of ${selectedAnswer.name}.`);
       setIsSubmitting(false);
       return;
     }
     
     // Only allow selling shares if the user has a positive balance
-    if (owned <= 0) {
+    if (formattedOwned <= 0) {
       setError(`You don't own any shares of ${selectedAnswer.name} to sell.`);
       setIsSubmitting(false);
       return;
@@ -364,7 +372,7 @@ export default function TradeForm() {
         throw new Error(`Failed to update market token_pool: ${marketUpdateError.message}`);
       }
     
-      setSuccess(`Successfully sold ${sellShares.toFixed(2)} shares of ${selectedAnswer.name} and received $${receivedAmount.toFixed(2)}`);
+      setSuccess(`Successfully sold ${formatShares(sellShares).toFixed(2)} shares of ${selectedAnswer.name} and received $${formatShares(receivedAmount).toFixed(2)}`);
       
       // Refresh market data to update UI with new odds
       await fetchMarketData();
@@ -509,9 +517,9 @@ export default function TradeForm() {
                 </span>
                 <span className="text-white">
                   {tradeType === 'buy' 
-                    ? computedShares.toFixed(2)
+                    ? formatShares(computedShares).toFixed(2)
                     : selectedAnswer 
-                      ? `${(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
+                      ? `${formatShares(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
                       : '$0.00'
                   }
                 </span>
@@ -533,7 +541,7 @@ export default function TradeForm() {
                     <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
                   ) : (
                     <span className="text-white">
-                      {userShares[selectedAnswer.id]?.toFixed(2) || '0'} shares
+                      {formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares
                     </span>
                   )}
                 </div>
@@ -548,9 +556,9 @@ export default function TradeForm() {
                 </span>
                 <span className="text-white">
                   {tradeType === 'buy'
-                    ? `${(computedShares * 1).toFixed(2)}`
+                    ? `${formatShares(computedShares).toFixed(2)}`
                     : selectedAnswer 
-                      ? `${Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice).toFixed(2)}`
+                      ? `${formatShares(Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice)).toFixed(2)}`
                       : '0'
                   }
                 </span>
@@ -564,7 +572,9 @@ export default function TradeForm() {
           onClick={handleSubmit}
           className={`w-full py-4 rounded-lg transition-colors flex justify-center items-center ${
             isLoading || isSubmitting || !selectedAnswer || totalPrice <= 0 || 
-            (tradeType === 'sell' && selectedAnswer && (!userShares[selectedAnswer.id] || userShares[selectedAnswer.id] < totalPrice))
+            (tradeType === 'sell' && selectedAnswer && 
+              (!userShares[selectedAnswer.id] || 
+                formatShares(totalPrice) > formatShares(userShares[selectedAnswer.id] || 0)))
               ? 'bg-gray-600 cursor-not-allowed opacity-50' 
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
@@ -573,7 +583,9 @@ export default function TradeForm() {
             isSubmitting ||
             !selectedAnswer || 
             totalPrice <= 0 || 
-            (tradeType === 'sell' && selectedAnswer && (!userShares[selectedAnswer.id] || userShares[selectedAnswer.id] < totalPrice))
+            (tradeType === 'sell' && selectedAnswer && 
+              (!userShares[selectedAnswer.id] || 
+                formatShares(totalPrice) > formatShares(userShares[selectedAnswer.id] || 0)))
           }
         >
           {isSubmitting ? (
@@ -589,10 +601,10 @@ export default function TradeForm() {
         {/* Show helpful message if selling is disabled */}
         {!isLoading && tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && (
           <p className="text-yellow-500 text-sm mt-2 text-center">
-            {userShares[selectedAnswer.id] <= 0 
+            {formatShares(userShares[selectedAnswer.id]) <= 0 
               ? `You do not own any shares of ${selectedAnswer.name}`
-              : totalPrice > userShares[selectedAnswer.id]
-                ? `You only own ${userShares[selectedAnswer.id]?.toFixed(2)} shares of ${selectedAnswer.name}`
+              : formatShares(totalPrice) > formatShares(userShares[selectedAnswer.id])
+                ? `You only own ${formatShares(userShares[selectedAnswer.id]).toFixed(2)} shares of ${selectedAnswer.name}`
                 : null
             }
           </p>
