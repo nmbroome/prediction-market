@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import supabase from "@/lib/supabase/createClient";
 import TradingForm from "@/components/TradeForm";
+import PriceChart from "@/components/PriceChart"; // Import the PriceChart component
 
 interface Market {
   id: number;
@@ -73,17 +74,29 @@ export default function MarketDetails() {
       : "N/A";
 
   return (
-    <div className="p-6">
-      <h1 className="text-4xl font-bold">{market.name}</h1>
-      <p className="text-2xl mt-2">
-        <strong>{yesOdds} Chance</strong>
-      </p>
-      <p className="text-xl mt-2">
-        <strong>Description:</strong> {market.description}
-      </p>
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-white">{market.name}</h1>
+        <p className="text-2xl mt-2 text-white">
+          <strong>{yesOdds} Chance</strong>
+        </p>
+        <p className="text-xl mt-2 text-white">
+          <strong>Description:</strong> {market.description}
+        </p>
+      </div>
 
-      {/* Render the TradingForm component */}
-      <TradingForm />
+      {/* Price Chart Component */}
+      <div className="mb-8">
+        <PriceChart 
+          marketId={Number(id)} 
+          height={400} 
+        />
+      </div>
+
+      {/* Trading Form Component */}
+      <div className="mt-8">
+        <TradingForm />
+      </div>
 
       {error && <p className="mt-4 text-red-600">{error}</p>}
     </div>
