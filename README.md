@@ -93,8 +93,9 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - [x] Verify PNL calculations when a user adds to their position
 - [x] Show the user how the odds change prior to the trade
 - [x] Collapse trades of same outcome in trade history
+- [x] Make sure market annullment settles at initial market odds
+- [ ] Fix potential returns on trade form
 - [ ] Add price charts to markets
-- [ ] Make sure market annullment settles at initial market odds
 - [ ] Recurring markets
 - [ ] Systematize CSS to make it more object oriented
 - [ ] Add combinatorial markets
