@@ -176,6 +176,16 @@ export default function TradeForm() {
   const formatShares = (value: number, decimals: number = 2): number => {
     return parseFloat(value.toFixed(decimals));
   };
+  
+  // Format currency values
+  const formatCurrency = (value: number): string => {
+    return new Intl.NumberFormat('en-US', { 
+      style: 'currency', 
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2 
+    }).format(value);
+  };
 
   // Handle prediction submission using the constantProductMarketMaker function.
   const handleBuy = async () => {
@@ -401,6 +411,27 @@ export default function TradeForm() {
       : '0';
   };
 
+  // Calculate potential payout if outcome wins (including current position)
+  const calculatePotentialPayout = (): string => {
+    if (!selectedAnswer) return formatCurrency(0);
+    
+    let potentialShares = 0;
+    
+    // Add current shares owned by the user for this outcome (if any)
+    const currentShares = userShares[selectedAnswer.id] || 0;
+    
+    if (tradeType === 'buy') {
+      // New shares from this purchase + existing shares
+      potentialShares = computedShares + currentShares;
+    } else {
+      // Existing shares minus those being sold
+      potentialShares = Math.max(0, currentShares - totalPrice);
+    }
+    
+    // Each share is worth $1 if the outcome wins
+    return formatCurrency(potentialShares);
+  };
+
   // Loading skeletons for different parts of the form
   const LoadingSkeleton = () => (
     <div className="animate-pulse">
@@ -530,8 +561,8 @@ export default function TradeForm() {
                   {tradeType === 'buy' 
                     ? formatShares(computedShares).toFixed(2)
                     : selectedAnswer 
-                      ? `${formatShares(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens)).toFixed(2)}`
-                      : '$0.00'
+                      ? formatCurrency(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens))
+                      : formatCurrency(0)
                   }
                 </span>
               </div>
@@ -567,7 +598,7 @@ export default function TradeForm() {
                 </span>
                 <span className="text-white">
                   {tradeType === 'buy'
-                    ? `${formatShares(computedShares).toFixed(2)}`
+                    ? calculatePotentialPayout()
                     : selectedAnswer 
                       ? `${formatShares(Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice)).toFixed(2)}`
                       : '0'
