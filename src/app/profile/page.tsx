@@ -20,6 +20,7 @@ export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [newUsername, setNewUsername] = useState<string>("");
+  const [paymentId, setPaymentId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [showTradeHistory, setShowTradeHistory] = useState<boolean>(false);
@@ -79,27 +80,36 @@ export default function UserProfile() {
   const openEditModal = () => {
     if (!profile) return;
     setNewUsername(profile.username || "");
+    setPaymentId(profile.payment_id || "");
     setIsModalOpen(true);
   };
 
   const closeEditModal = () => {
     setIsModalOpen(false);
     setNewUsername("");
+    setPaymentId("");
   };
 
-  const saveUsername = async () => {
+  const saveProfile = async () => {
     if (!profile) return;
     setLoading(true);
 
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ username: newUsername })
+      .update({ 
+        username: newUsername,
+        payment_id: paymentId
+      })
       .eq("id", profile.id);
 
     if (updateError) {
-      console.error("Error updating username:", updateError.message);
+      console.error("Error updating profile:", updateError.message);
     } else {
-      setProfile({ ...profile, username: newUsername });
+      setProfile({ 
+        ...profile, 
+        username: newUsername,
+        payment_id: paymentId 
+      });
       closeEditModal();
     }
     setLoading(false);
@@ -203,8 +213,10 @@ export default function UserProfile() {
         <EditProfileModal
           newUsername={newUsername}
           setNewUsername={setNewUsername}
+          paymentId={paymentId}
+          setPaymentId={setPaymentId}
           onClose={closeEditModal}
-          onSave={saveUsername}
+          onSave={saveProfile}
           loading={loading}
         />
       )}
