@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import supabase from "@/lib/supabase/createClient";
 
-// Define interfaces for our data types
 interface LeaderboardEntry {
   user_id: string;
   username?: string;
+  payment_id?: string | null;      // ← added
   total_profit: number;
   percent_pnl: number;
   balance: number;
@@ -16,7 +16,9 @@ interface Profile {
   user_id: string;
   username?: string;
   balance: number;
+  payment_id?: string | null;      // ← added
 }
+
 
 export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
@@ -32,7 +34,7 @@ export default function Leaderboard() {
         // Get all users with their profiles
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("user_id, username, balance");
+          .select("user_id, username, balance, payment_id");
 
         if (profilesError) throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
         if (!profiles) throw new Error("No user profiles found");
@@ -137,6 +139,7 @@ export default function Leaderboard() {
             leaderboardResults.push({
               user_id: profile.user_id,
               username: profile.username,
+              payment_id: profile.payment_id,
               total_profit: totalProfit,
               percent_pnl: percentPNL,
               balance: balance
@@ -241,6 +244,9 @@ export default function Leaderboard() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   User
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Payment_ID
+                </th>
                 <th 
                   className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "absolute" ? "bg-gray-800" : ""}`}
                   onClick={() => handleSortClick("absolute")}
@@ -268,6 +274,9 @@ export default function Leaderboard() {
                     <div className="text-sm font-medium text-white">
                       {player.username || player.user_id}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-200">
+                    {player.payment_id ?? "—"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className={`text-sm ${player.total_profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
