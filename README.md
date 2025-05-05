@@ -97,6 +97,7 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - [x] Fix potential returns on trade form
 - [x] Add ability to change workerID on profile
 - [x] Add price charts to markets
+- [ ] Add leaderboard page
 - [ ] Recurring markets
 - [ ] Systematize CSS to make it more object oriented
 - [ ] Add combinatorial markets
