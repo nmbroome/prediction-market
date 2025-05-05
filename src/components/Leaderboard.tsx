@@ -6,13 +6,23 @@ import supabase from "@/lib/supabase/createClient";
 // Define interfaces for our data types
 interface LeaderboardEntry {
   user_id: string;
+  username?: string;
   total_profit: number;
+  percent_pnl: number;
+  balance: number;
+}
+
+interface Profile {
+  user_id: string;
+  username?: string;
+  balance: number;
 }
 
 export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"absolute" | "percent">("absolute");
   const [sortDirection, setSortDirection] = useState("desc");
 
   useEffect(() => {
@@ -20,17 +30,17 @@ export default function Leaderboard() {
       setLoading(true);
       try {
         // Get all users with their profiles
-        const { data: users, error: usersError } = await supabase
+        const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("user_id");
+          .select("user_id, username, balance");
 
-        if (usersError) throw new Error(`Failed to fetch user profiles: ${usersError.message}`);
-        if (!users) throw new Error("No user profiles found");
+        if (profilesError) throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
+        if (!profiles) throw new Error("No user profiles found");
 
         // Filter out any users with null or undefined user_id
-        const validUsers = users.filter(user => user && user.user_id);
+        const validProfiles = profiles.filter(profile => profile && profile.user_id) as Profile[];
         
-        console.log(`Found ${validUsers.length} valid users out of ${users.length} total`);
+        console.log(`Found ${validProfiles.length} valid profiles out of ${profiles.length} total`);
 
         // Fetch all predictions at once for better performance
         const { data: allPredictions, error: predictionsError } = await supabase
@@ -105,40 +115,46 @@ export default function Leaderboard() {
 
         const leaderboardResults: LeaderboardEntry[] = [];
         
-        // For each user, calculate their total profit
-        for (const user of validUsers) {
+        // For each user, calculate their total profit and percent PNL
+        for (const profile of validProfiles) {
           try {
             // Get trading PNL from predictions
-            const tradingPNL = predictionsByUser[user.user_id] || 0;
+            const tradingPNL = predictionsByUser[profile.user_id] || 0;
             
             // Get user's total payouts
-            const totalPayouts = payoutsByUser[user.user_id] || 0;
+            const totalPayouts = payoutsByUser[profile.user_id] || 0;
 
             // Calculate total profit (PNL + payouts)
             const totalProfit = tradingPNL + totalPayouts;
+            
+            // Get user's balance (or default to 100 if not available)
+            const balance = profile.balance || 100;
+            
+            // Calculate percentage PNL based on the balance
+            // Avoid division by zero
+            const percentPNL = balance > 0 ? (totalProfit / balance) * 100 : 0;
 
             leaderboardResults.push({
-              user_id: user.user_id,
-              total_profit: totalProfit
+              user_id: profile.user_id,
+              username: profile.username,
+              total_profit: totalProfit,
+              percent_pnl: percentPNL,
+              balance: balance
             });
           } catch (userError) {
-            console.warn(`Skipping user ${user.user_id} due to error:`, userError);
+            console.warn(`Skipping user ${profile.user_id} due to error:`, userError);
           }
         }
 
         // Filter users with no activity
         const activeUsers = leaderboardResults.filter(
-          entry => entry.total_profit !== 0
+          entry => entry.total_profit !== 0 || entry.percent_pnl !== 0
         );
 
-        // Sort by total profit descending
-        activeUsers.sort((a, b) => 
-          sortDirection === 'desc' 
-            ? b.total_profit - a.total_profit 
-            : a.total_profit - b.total_profit
-        );
+        // Sort by the selected metric
+        const sortedData = sortLeaderboardData(activeUsers, sortBy, sortDirection);
 
-        setLeaderboardData(activeUsers);
+        setLeaderboardData(sortedData);
       } catch (err) {
         console.error("Error calculating leaderboard data:", err);
         setError(err instanceof Error ? err.message : "Failed to load leaderboard data");
@@ -148,7 +164,32 @@ export default function Leaderboard() {
     }
 
     fetchAndCalculateLeaderboardData();
-  }, [sortDirection]);
+  }, [sortBy, sortDirection]);
+  
+  // Sort the leaderboard data based on current sort parameters
+  const sortLeaderboardData = (data: LeaderboardEntry[], sortMetric: "absolute" | "percent", direction: string) => {
+    return [...data].sort((a, b) => {
+      const valueA = sortMetric === "absolute" ? a.total_profit : a.percent_pnl;
+      const valueB = sortMetric === "absolute" ? b.total_profit : b.percent_pnl;
+      
+      return direction === "desc" ? valueB - valueA : valueA - valueB;
+    });
+  };
+
+  // Handle column header click
+  const handleSortClick = (metric: "absolute" | "percent") => {
+    // If clicking the same column, toggle direction
+    if (sortBy === metric) {
+      const newDirection = sortDirection === "asc" ? "desc" : "asc";
+      setSortDirection(newDirection);
+      setLeaderboardData(sortLeaderboardData(leaderboardData, metric, newDirection));
+    } else {
+      // If clicking different column, switch to that column with desc order
+      setSortBy(metric);
+      setSortDirection("desc");
+      setLeaderboardData(sortLeaderboardData(leaderboardData, metric, "desc"));
+    }
+  };
 
   // Format currency values
   const formatCurrency = (value: number) => {
@@ -159,10 +200,14 @@ export default function Leaderboard() {
       maximumFractionDigits: 2 
     }).format(value);
   };
-
-  // Toggle sort direction
-  const toggleSortDirection = () => {
-    setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+  
+  // Format percentage values
+  const formatPercentage = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'percent',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value / 100);
   };
 
   if (loading) return (
@@ -193,17 +238,26 @@ export default function Leaderboard() {
           <table className="min-w-full divide-y divide-gray-700">
             <thead className="bg-gray-900">
               <tr>
-                <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider"
-                >
-                  User ID
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  User
                 </th>
                 <th 
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer"
-                  onClick={toggleSortDirection}
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "absolute" ? "bg-gray-800" : ""}`}
+                  onClick={() => handleSortClick("absolute")}
                 >
                   Total Profit
-                  <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                  {sortBy === "absolute" && (
+                    <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                  )}
+                </th>
+                <th 
+                  className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "percent" ? "bg-gray-800" : ""}`}
+                  onClick={() => handleSortClick("percent")}
+                >
+                  Percent PNL
+                  {sortBy === "percent" && (
+                    <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
+                  )}
                 </th>
               </tr>
             </thead>
@@ -211,11 +265,18 @@ export default function Leaderboard() {
               {leaderboardData.map((player, index) => (
                 <tr key={player.user_id} className={index % 2 === 0 ? "bg-gray-800" : "bg-gray-900"}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">{player.user_id}</div>
+                    <div className="text-sm font-medium text-white">
+                      {player.username || player.user_id}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className={`text-sm ${player.total_profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatCurrency(player.total_profit)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className={`text-sm ${player.percent_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatPercentage(player.percent_pnl)}
                     </div>
                   </td>
                 </tr>
@@ -223,7 +284,7 @@ export default function Leaderboard() {
               
               {leaderboardData.length === 0 && (
                 <tr>
-                  <td colSpan={2} className="px-6 py-4 text-center text-gray-400">
+                  <td colSpan={3} className="px-6 py-4 text-center text-gray-400">
                     No leaderboard data available yet
                   </td>
                 </tr>
