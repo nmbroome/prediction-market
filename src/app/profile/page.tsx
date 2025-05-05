@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import supabase from "@/lib/supabase/createClient";
 import TradeHistory from "@/components/TradeHistory";
-import { calculatePNL } from "@/lib/calculatePNL";
 import { User } from "@supabase/supabase-js";
 import EditProfileModal from "@/components/EditProfileModal";
 
@@ -16,6 +15,14 @@ interface Profile {
   payment_id?: string;
 }
 
+// PNL Metrics interface
+interface PnlMetrics {
+  totalPNL: number;
+  percentageChange: number;
+  volumeTraded: number;
+  marketsTraded: number;
+}
+
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -26,11 +33,9 @@ export default function UserProfile() {
   const [showTradeHistory, setShowTradeHistory] = useState<boolean>(false);
 
   // State for PNL metrics
-  const [pnlMetrics, setPnlMetrics] = useState<{
-    totalPNL: number;
-    percentageChange: number;
-  } | null>(null);
+  const [pnlMetrics, setPnlMetrics] = useState<PnlMetrics | null>(null);
   const [pnlError, setPnlError] = useState<string | null>(null);
+  const [isLoadingPnl, setIsLoadingPnl] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -61,9 +66,68 @@ export default function UserProfile() {
   useEffect(() => {
     if (user) {
       const fetchPNL = async () => {
+        setIsLoadingPnl(true);
         try {
-          const result = await calculatePNL(user.id);
-          setPnlMetrics(result);
+          // Fetch all predictions for this user
+          const { data: predictionsData, error: predictionsError } = await supabase
+            .from("predictions")
+            .select("market_id, trade_value")
+            .eq("user_id", user.id);
+
+          if (predictionsError) throw predictionsError;
+
+          // Fetch all payouts for this user (if any)
+          const { data: payoutsData, error: payoutsError } = await supabase
+            .from("payouts")
+            .select("*")
+            .eq("user_id", user.id);
+
+          if (payoutsError) {
+            console.warn("Error fetching payouts:", payoutsError);
+          }
+
+          // Calculate total PNL from predictions
+          let totalPNL = 0;
+          if (predictionsData) {
+            totalPNL = predictionsData.reduce((acc, pred) => acc + (pred.trade_value || 0), 0);
+          }
+
+          // Add payouts if any
+          if (payoutsData && payoutsData.length > 0) {
+            // Try different potential payout amount column names
+            const possibleColumnNames = ["payout_amount", "amount", "payoutAmount", "value", "payout", "shares"];
+            
+            payoutsData.forEach(payout => {
+              for (const colName of possibleColumnNames) {
+                if (colName in payout && !isNaN(Number(payout[colName]))) {
+                  totalPNL += Number(payout[colName] || 0);
+                  break;
+                }
+              }
+            });
+          }
+
+          // Get user's balance (or default to 100 if not available)
+          const balance = (profile?.balance || 100);
+          
+          // Calculate percentage PNL based on the balance
+          // Avoid division by zero
+          const percentageChange = balance > 0 ? (totalPNL / balance) * 100 : 0;
+
+          // Calculate volume traded (absolute sum of all transactions)
+          const volumeTraded = predictionsData 
+            ? predictionsData.reduce((acc, pred) => acc + Math.abs(pred.trade_value || 0), 0)
+            : 0;
+
+          // Calculate number of unique markets traded
+          const uniqueMarkets = new Set(predictionsData?.map(pred => pred.market_id) || []);
+          
+          setPnlMetrics({
+            totalPNL,
+            percentageChange,
+            volumeTraded,
+            marketsTraded: uniqueMarkets.size
+          });
         } catch (err: unknown) {
           let errorMessage = "Error calculating PNL";
           if (err instanceof Error) {
@@ -71,11 +135,13 @@ export default function UserProfile() {
           }
           setPnlError(errorMessage);
           console.log(pnlError);
-        }        
+        } finally {
+          setIsLoadingPnl(false);
+        }       
       };
       fetchPNL();
     }
-  }, [user]);
+  }, [user, profile]);
 
   const openEditModal = () => {
     if (!profile) return;
@@ -124,6 +190,15 @@ export default function UserProfile() {
       maximumFractionDigits: 2 
     }).format(value);
   };
+  
+  // Format percentage values
+  const formatPercentage = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'percent',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(value / 100);
+  };
 
   return (
     <div className="min-h-screen p-6">
@@ -154,19 +229,38 @@ export default function UserProfile() {
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
               <div className="text-gray-400 mb-2">Profit/loss</div>
-              <div className={`font-bold text-xl ${pnlMetrics && pnlMetrics.totalPNL < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                {pnlMetrics ? formatCurrency(pnlMetrics.totalPNL) : 'Loading...'}
-              </div>
+              {isLoadingPnl ? (
+                <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
+              ) : (
+                <div className={`font-bold text-xl ${pnlMetrics && pnlMetrics.percentageChange < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                  {pnlMetrics ? formatPercentage(pnlMetrics.percentageChange) : 'Error'}
+                </div>
+              )}
+              {pnlMetrics && !isLoadingPnl && (
+                <div className={`text-sm text-gray-300`}>
+                  {formatCurrency(pnlMetrics.totalPNL)}
+                </div>
+              )}
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
               <div className="text-gray-400 mb-2">Volume traded</div>
               <div className="text-white font-bold text-xl">
-                {formatCurrency(0.00)}
+                {isLoadingPnl ? (
+                  <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
+                ) : (
+                  formatCurrency(pnlMetrics?.volumeTraded || 0)
+                )}
               </div>
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
               <div className="text-gray-400 mb-2">Markets traded</div>
-              <div className="text-white font-bold text-xl">0</div>
+              <div className="text-white font-bold text-xl">
+                {isLoadingPnl ? (
+                  <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
+                ) : (
+                  pnlMetrics?.marketsTraded || 0
+                )}
+              </div>
             </div>
           </div>
 
