@@ -97,7 +97,7 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - [x] Fix potential returns on trade form
 - [x] Add ability to change workerID on profile
 - [x] Add price charts to markets
-- [ ] Add leaderboard page
+- [x] Add leaderboard page
 - [ ] Recurring markets
 - [ ] Systematize CSS to make it more object oriented
 - [ ] Add combinatorial markets
@@ -174,6 +174,16 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 | created_at | Timestamp for leaderboard entry |
 | iq | IQ score |
 | user_id | User reference |
+
+### Payouts
+| Field | Description |
+|-------|-------------|
+| id | Unique identifier for the payout record |
+| user_id | Reference to the user receiving the payout |
+| market_id | Reference to the market the payout is for |
+| outcome_id | Reference to the winning outcome |
+| payout_amount | Amount of the payout in dollars/credits |
+| created_at | Timestamp when the payout was processed |
 
 ## Development Status
 
