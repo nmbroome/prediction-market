@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import supabase from "@/lib/supabase/createClient";
 import { addPrediction } from "@/lib/predictions";
-import { constantProductMarketMaker } from "@/lib/marketMakers";
+import { fixedPriceMarketMaker, cpmm_update } from "@/lib/marketMakers";
 import { User } from "@supabase/supabase-js";
 
 interface Market {
@@ -141,8 +141,7 @@ export default function TradeForm() {
     fetchUserShares();
   }, [user, market, answers]);
 
-  // Re-calculate the computed shares using the constantProductMarketMaker function.
-  // This function assumes a binary market (exactly 2 outcomes).
+  // Calculate shares based on the trade type
   useEffect(() => {
     if (selectedAnswer && totalPrice > 0 && answers.length === 2) {
       const otherAnswer = answers.find((a) => a.id !== selectedAnswer.id);
@@ -151,16 +150,19 @@ export default function TradeForm() {
         return;
       }
       try {
-        // Use the provided function:
-        // outcome1_tokens: selected outcome's token pool
-        // outcome2_tokens: opposing outcome's token pool
-        // predict_amt: amount being spent (totalPrice)
-        const shares = constantProductMarketMaker(
-          selectedAnswer.tokens,
-          otherAnswer.tokens,
-          totalPrice
-        );
-        setComputedShares(shares);
+        // For buy - use fixed price market maker
+        if (tradeType === 'buy') {
+          const shares = fixedPriceMarketMaker(
+            selectedAnswer.tokens,
+            otherAnswer.tokens,
+            totalPrice
+          );
+          setComputedShares(shares);
+        } else {
+          // For sell - the shares are directly the input amount
+          // and we calculate the received amount in UI
+          setComputedShares(totalPrice);
+        }
       } catch (e: unknown) {
         if (e instanceof Error) {
           setError(e.message);
@@ -170,7 +172,7 @@ export default function TradeForm() {
     } else {
       setComputedShares(0);
     }
-  }, [selectedAnswer, totalPrice, answers]);
+  }, [selectedAnswer, totalPrice, answers, tradeType]);
 
   // Format a number to a fixed number of decimal places (for display and comparison)
   const formatShares = (value: number, decimals: number = 2): number => {
@@ -187,7 +189,7 @@ export default function TradeForm() {
     }).format(value);
   };
 
-  // Handle prediction submission using the constantProductMarketMaker function.
+  // Handle buy prediction
   const handleBuy = async () => {
     setError(null);
     setSuccess(null);
@@ -224,18 +226,26 @@ export default function TradeForm() {
         throw new Error("Could not determine the opposing outcome.");
       }
   
-      // Determine new token pools
-      const k = selectedAnswer.tokens * otherAnswer.tokens;
-      const newOutcome1Tokens = selectedAnswer.tokens + totalPrice;
-      const newOutcome2Tokens = k / newOutcome1Tokens;
-      const sharesPurchased = constantProductMarketMaker(
+      // Step 1: Calculate shares using fixed price model (for user experience)
+      // Calculate current market odds
+      const totalTokens = selectedAnswer.tokens + otherAnswer.tokens;
+      const currentOdds = selectedAnswer.tokens / totalTokens;
+      
+      // Use fixed price to calculate shares - this gives the expected amount
+      // where $10 at 50% odds gives 20 shares
+      const sharesPurchased = fixedPriceMarketMaker(
         selectedAnswer.tokens,
         otherAnswer.tokens,
         totalPrice
       );
-      
-      // Calculate current market odds
-      const currentOdds = selectedAnswer.tokens / (selectedAnswer.tokens + otherAnswer.tokens);
+  
+      // Step 2: Update the market state using CPMM (for price discovery)
+      // This updates the odds based on the constant product formula
+      const [newOutcome1Tokens, newOutcome2Tokens] = cpmm_update(
+        selectedAnswer.tokens,
+        otherAnswer.tokens,
+        totalPrice
+      );
   
       // Create prediction with new schema
       await addPrediction({
@@ -248,7 +258,7 @@ export default function TradeForm() {
         trade_type: 'buy'
       });
   
-      // Update both outcomes in the database
+      // Update both outcomes in the database using the CPMM-calculated token amounts
       const { error: updateError1 } = await supabase
         .from("outcomes")
         .update({ tokens: newOutcome1Tokens })
@@ -294,6 +304,7 @@ export default function TradeForm() {
     }
   };
   
+  // Handle sell functionality
   const handleSell = async () => {
     setError(null);
     setSuccess(null);
@@ -324,7 +335,7 @@ export default function TradeForm() {
       setIsSubmitting(false);
       return;
     }
-  
+
     try {
       const otherAnswer = answers.find((a) => a.id !== selectedAnswer.id);
       if (!otherAnswer) {
@@ -333,18 +344,23 @@ export default function TradeForm() {
         return;
       }
       
-      // Calculate current market odds and price
-      const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
-      const currentOdds = selectedAnswer.tokens / totalOutcomeTokens;
+      // Calculate current market odds
+      const totalTokens = selectedAnswer.tokens + otherAnswer.tokens;
+      const currentOdds = selectedAnswer.tokens / totalTokens;
       
-      // Calculate dollar amount to receive from sale (current price * shares)
-      const receivedAmount = currentOdds * sellShares;
+      // For selling, calculate the amount received using the fixed price
+      // When selling shares, we multiply by the current probability
+      // This is the inverse of the buy calculation
+      const receivedAmount = sellShares * currentOdds;
       
-      // Calculate token changes
-      const k = selectedAnswer.tokens * otherAnswer.tokens; // Constant product
-      const newSelectedTokens = selectedAnswer.tokens - receivedAmount;
-      const newOtherTokens = k / newSelectedTokens;
-  
+      // Update token pools using CPMM
+      // For selling, we remove tokens from the selected outcome's pool
+      const [new_other_tokens, new_selected_tokens] = cpmm_update(
+        otherAnswer.tokens,     // In CPMM update, the first pool is where we add tokens
+        selectedAnswer.tokens,  // The second pool is where tokens are removed
+        receivedAmount          // Amount being added to first pool
+      );
+      
       // Record the sell transaction with new schema
       await addPrediction({
         user_id: user.id,
@@ -359,20 +375,20 @@ export default function TradeForm() {
       // Update outcome tokens in the database
       const { error: updateError1 } = await supabase
         .from("outcomes")
-        .update({ tokens: newSelectedTokens })
+        .update({ tokens: new_selected_tokens })
         .eq("id", selectedAnswer.id);
       
       if (updateError1) throw new Error(`Failed to update outcome tokens: ${updateError1.message}`);
       
       const { error: updateError2 } = await supabase
         .from("outcomes")
-        .update({ tokens: newOtherTokens })
+        .update({ tokens: new_other_tokens })
         .eq("id", otherAnswer.id);
         
       if (updateError2) throw new Error(`Failed to update opposing outcome tokens: ${updateError2.message}`);
       
       // Update market token pool
-      const newMarketTokenPool = newSelectedTokens + newOtherTokens;
+      const newMarketTokenPool = new_selected_tokens + new_other_tokens;
       const { error: marketUpdateError } = await supabase
         .from("markets")
         .update({ token_pool: newMarketTokenPool })
@@ -382,7 +398,7 @@ export default function TradeForm() {
         throw new Error(`Failed to update market token_pool: ${marketUpdateError.message}`);
       }
     
-      setSuccess(`Successfully sold ${formatShares(sellShares).toFixed(2)} shares of ${selectedAnswer.name} and received $${formatShares(receivedAmount).toFixed(2)}`);
+      setSuccess(`Successfully sold ${formatShares(sellShares).toFixed(2)} shares of ${selectedAnswer.name} and received ${formatCurrency(receivedAmount)}`);
       
       // Refresh market data to update UI with new odds
       await fetchMarketData();
@@ -400,7 +416,7 @@ export default function TradeForm() {
       setIsSubmitting(false);
     }
   };
-  
+
   // Calculate total tokens across all outcomes
   const totalOutcomeTokens = answers.reduce((sum, a) => sum + a.tokens, 0);
 
@@ -411,26 +427,34 @@ export default function TradeForm() {
       : '0';
   };
 
-  // Calculate potential payout if outcome wins (including current position)
-  const calculatePotentialPayout = (): string => {
+  // Calculate potential return if outcome wins
+  const calculatePotentialReturn = (): string => {
     if (!selectedAnswer) return formatCurrency(0);
     
-    let potentialShares = 0;
-    
-    // Add current shares owned by the user for this outcome (if any)
-    const currentShares = userShares[selectedAnswer.id] || 0;
-    
     if (tradeType === 'buy') {
-      // New shares from this purchase + existing shares
-      potentialShares = computedShares + currentShares;
+      // For buying, potential return is the number of shares
+      // Each share is worth $1 if the outcome wins
+      const potentialReturn = computedShares;
+      return formatCurrency(potentialReturn);
     } else {
-      // Existing shares minus those being sold
-      potentialShares = Math.max(0, currentShares - totalPrice);
+      // For selling, we show how much money they'll receive
+      const currentOdds = selectedAnswer.tokens / totalOutcomeTokens;
+      const receivedAmount = totalPrice * currentOdds;
+      return formatCurrency(receivedAmount);
     }
-    
-    // Each share is worth $1 if the outcome wins
-    return formatCurrency(potentialShares);
   };
+
+  // Calculate the estimated amount received when selling
+  const calculateSellAmount = (): string => {
+    if (!selectedAnswer || tradeType !== 'sell') return formatCurrency(0);
+    
+    const currentOdds = selectedAnswer.tokens / totalOutcomeTokens;
+    const receivedAmount = totalPrice * currentOdds;
+    return formatCurrency(receivedAmount);
+  };
+
+  // Handle submit based on trade type
+  const handleSubmit = tradeType === 'buy' ? handleBuy : handleSell;
 
   // Loading skeletons for different parts of the form
   const LoadingSkeleton = () => (
@@ -442,7 +466,6 @@ export default function TradeForm() {
   );
 
   const isLoading = isUserLoading || isMarketLoading;
-  const handleSubmit = tradeType === 'buy' ? handleBuy : handleSell;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
@@ -555,14 +578,12 @@ export default function TradeForm() {
             <>
               <div className="flex justify-between mb-2">
                 <span className="text-gray-400">
-                  {tradeType === 'buy' ? 'Contracts to Receive' : 'Estimated Payout'}
+                  {tradeType === 'buy' ? 'Shares to Receive' : 'Amount to Receive'}
                 </span>
                 <span className="text-white">
                   {tradeType === 'buy' 
                     ? formatShares(computedShares).toFixed(2)
-                    : selectedAnswer 
-                      ? formatCurrency(totalPrice * (selectedAnswer.tokens / totalOutcomeTokens))
-                      : formatCurrency(0)
+                    : calculateSellAmount()
                   }
                 </span>
               </div>
@@ -570,8 +591,8 @@ export default function TradeForm() {
                 <span className="text-gray-400">Current odds</span>
                 <span className="text-white">
                   {selectedAnswer 
-                    ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '¢'
-                    : '0¢'}
+                    ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '%'
+                    : '0%'}
                 </span>
               </div>
               
@@ -589,22 +610,27 @@ export default function TradeForm() {
                 </div>
               )}
               
-              <div className="flex justify-between">
-                <span className="text-gray-400">
-                  {tradeType === 'buy' 
-                    ? `Payout if ${selectedAnswer?.name || 'outcome'} wins`
-                    : 'Shares remaining after sale'
-                  }
-                </span>
-                <span className="text-white">
-                  {tradeType === 'buy'
-                    ? calculatePotentialPayout()
-                    : selectedAnswer 
-                      ? `${formatShares(Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice)).toFixed(2)}`
-                      : '0'
-                  }
-                </span>
-              </div>
+              {tradeType === 'buy' && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">
+                    {`If ${selectedAnswer?.name || 'outcome'} resolves to YES`}
+                  </span>
+                  <span className="text-white">
+                    {calculatePotentialReturn()}
+                  </span>
+                </div>
+              )}
+              
+              {tradeType === 'sell' && selectedAnswer && (
+                <div className="flex justify-between">
+                  <span className="text-gray-400">
+                    Shares remaining
+                  </span>
+                  <span className="text-white">
+                    {formatShares(Math.max(0, (userShares[selectedAnswer.id] || 0) - totalPrice)).toFixed(2)}
+                  </span>
+                </div>
+              )}
             </>
           )}
         </div>
