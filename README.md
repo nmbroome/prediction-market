@@ -187,6 +187,9 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Development Status
 
+### June 2, 2025
+- Begin separating functions from components into /lib
+
 ### April 23, 2025
 - Add ability to edit worker ID on profile page
 
