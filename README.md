@@ -187,6 +187,9 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Development Status
 
+### June 9, 2025
+- Update leaderboard component with numbering
+
 ### June 2, 2025
 - Begin separating functions from components into /lib
 
