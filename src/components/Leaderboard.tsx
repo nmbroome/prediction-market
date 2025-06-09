@@ -239,6 +239,9 @@ export default function Leaderboard() {
             <thead className="bg-gray-900">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Rank
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                   User
                 </th>
                 <th 
@@ -262,29 +265,50 @@ export default function Leaderboard() {
               </tr>
             </thead>
             <tbody className="bg-gray-800 divide-y divide-gray-700">
-              {leaderboardData.map((player, index) => (
-                <tr key={player.user_id} className={index % 2 === 0 ? "bg-gray-800" : "bg-gray-900"}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">
-                      {player.username || player.user_id}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm ${player.total_profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(player.total_profit)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm ${player.percent_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatPercentage(player.percent_pnl)}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {leaderboardData.map((player, index) => {
+                // Calculate rank based on current position in sorted array
+                const rank = index + 1;
+                
+                return (
+                  <tr key={player.user_id} className={index % 2 === 0 ? "bg-gray-800" : "bg-gray-900"}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {/* Special styling for top 3 positions */}
+                        <div className={`text-lg font-bold ${
+                          rank === 1 ? 'text-yellow-400' :
+                          rank === 2 ? 'text-gray-300' :
+                          rank === 3 ? 'text-amber-600' :
+                          'text-white'
+                        }`}>
+                          {rank === 1 && '🥇'}
+                          {rank === 2 && '🥈'}
+                          {rank === 3 && '🥉'}
+                          {rank > 3 && `#${rank}`}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-white">
+                        {player.username || player.user_id}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm ${player.total_profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatCurrency(player.total_profit)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm ${player.percent_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatPercentage(player.percent_pnl)}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               
               {leaderboardData.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-6 py-4 text-center text-gray-400">
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
                     No leaderboard data available yet
                   </td>
                 </tr>
