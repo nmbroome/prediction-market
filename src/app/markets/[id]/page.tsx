@@ -116,7 +116,8 @@ export default function MarketDetails() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="py-6 max-w-7xl mx-auto">
+      {/* Market Header */}
       <div className="mb-8">
         <div className="flex items-center gap-4">
           <h1 className="text-4xl font-bold text-white">{market.name}</h1>
@@ -135,31 +136,36 @@ export default function MarketDetails() {
         )}
       </div>
 
-      {/* Price Chart Component */}
-      <div className="mb-8">
-        <PriceChart 
-          marketId={Number(id)} 
-          height={400} 
-        />
-      </div>
+      {/* Chart and Trading Form Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 items-start">
+        {/* Price Chart - Takes up 2/3 of the width on large screens */}
+        <div className="lg:col-span-2">
+          <PriceChart 
+            marketId={Number(id)} 
+            height={500} 
+          />
+        </div>
 
-      {/* Trading Form Component - only show if market is open */}
-      {marketStatus === 'open' ? (
-        <div className="mt-8">
-          <TradingForm />
+        {/* Trading Form - Takes up 1/3 of the width on large screens */}
+        <div className="lg:col-span-1 flex flex-col">
+          {marketStatus === 'open' ? (
+            <TradingForm />
+          ) : (
+            <div className="p-6 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] text-center">
+              <div>
+                <h3 className="text-xl text-white mb-2">
+                  {marketStatus === 'closed' ? 'This market is closed' : 'This market has been resolved'}
+                </h3>
+                <p className="text-gray-400">
+                  {marketStatus === 'closed' 
+                    ? 'Trading is no longer available for this market.' 
+                    : 'This market has been resolved. No further trading is possible.'}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="mt-8 p-6 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] text-center">
-          <h3 className="text-xl text-white mb-2">
-            {marketStatus === 'closed' ? 'This market is closed' : 'This market has been resolved'}
-          </h3>
-          <p className="text-gray-400">
-            {marketStatus === 'closed' 
-              ? 'Trading is no longer available for this market.' 
-              : 'This market has been resolved. No further trading is possible.'}
-          </p>
-        </div>
-      )}
+      </div>
 
       {error && <p className="mt-4 text-red-600">{error}</p>}
     </div>
