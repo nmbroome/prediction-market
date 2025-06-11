@@ -600,257 +600,255 @@ export default function TradeForm() {
   const isLoading = isUserLoading || isMarketLoading;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-lg border border-[#2C2C2C] p-6">
-        {/* Market Title */}
-        <div className="mb-6">
-          {isMarketLoading ? (
-            <div className="h-6 bg-[#2C2C2C] rounded w-2/3 animate-pulse"></div>
-          ) : (
-            <h2 className="text-white text-xl font-semibold">
-              {market?.name}
-            </h2>
-          )}
-        </div>
-
-        {/* Trade Type Selector */}
-        <div className="flex mb-6">
-          <button
-            onClick={() => setTradeType('buy')}
-            className={`w-1/2 py-2 ${
-              tradeType === 'buy' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-[#2C2C2C] text-gray-400'
-            } rounded-l-lg transition-colors`}
-            disabled={isLoading}
-          >
-            Buy
-          </button>
-          <button
-            onClick={() => setTradeType('sell')}
-            className={`w-1/2 py-2 ${
-              tradeType === 'sell' 
-                ? 'bg-blue-600 text-white' 
-                : 'bg-[#2C2C2C] text-gray-400'
-            } rounded-r-lg transition-colors`}
-            disabled={isLoading}
-          >
-            Sell
-          </button>
-        </div>
-
-        {/* Outcome Buttons */}
-        <div className="flex gap-4 mb-6">
-          {isMarketLoading ? (
-            <>
-              <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
-              <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
-            </>
-          ) : answers.length > 0 ? (
-            answers.map((answer) => (
-              <button
-                key={answer.id}
-                onClick={() => setSelectedAnswer(answer)}
-                className={`flex-1 py-3 rounded-lg transition-colors ${
-                  selectedAnswer?.id === answer.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#2C2C2C] text-gray-400 hover:bg-[#3C3C3C]'
-                }`}
-                disabled={isLoading}
-              >
-                <div className="flex justify-between px-4">
-                  <span>{answer.name}</span>
-                  <span>{getOutcomeProbability(answer)}¢</span>
-                </div>
-              </button>
-            ))
-          ) : (
-            <div className="w-full text-center text-gray-400 py-3">
-              No outcomes available for this market
-            </div>
-          )}
-        </div>
-
-        {/* Amount Input */}
-        <div className="mb-6">
-          <label className="block text-gray-400 mb-2">
-            {tradeType === 'buy' ? 'Amount to Spend ($)' : 'Shares to Sell'}
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              {tradeType === 'buy' ? '$' : '#'}
-            </span>
-            <input
-              type="number"
-              value={totalPrice}
-              onChange={(e) => setTotalPrice(Number(e.target.value))}
-              className="w-full bg-[#2C2C2C] text-white py-3 pl-6 pr-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Max Buy/Sell All buttons */}
-        {tradeType === 'buy' && selectedAnswer && (
-          <button
-            onClick={() => {
-              const maxAmount = getMaxPurchaseAmount();
-              if (maxAmount > 0) {
-                setTotalPrice(maxAmount);
-              }
-            }}
-            className="mb-4 w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors text-sm"
-            disabled={isLoading || isSubmitting || getMaxPurchaseAmount() <= 0}
-          >
-            Max Buy (${getMaxPurchaseAmount().toFixed(2)})
-          </button>
-        )}
-
-        {tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] > 0 && (
-          <button
-            onClick={() => setTotalPrice(formatShares(userShares[selectedAnswer.id] || 0))}
-            className="mb-4 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
-            disabled={isLoading || isSubmitting}
-          >
-            Sell All ({formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares)
-          </button>
-        )}
-
-        {/* Enhanced Trade Details */}
-        <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : (
-            <>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">
-                  {tradeType === 'buy' ? 'Shares to Receive' : 'Amount to Receive'}
-                </span>
-                <span className="text-white">
-                  {tradeType === 'buy' 
-                    ? formatShares(computedShares).toFixed(2)
-                    : calculateSellAmount()
-                  }
-                </span>
-              </div>
-
-              {/* Buy-specific details with price impact */}
-              {tradeType === 'buy' && preview.isValid && selectedAnswer && (
-                <>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-400">Average price per share</span>
-                    <span className="text-white">
-                      {formatCurrency(preview.avgPrice)}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-400">Price impact</span>
-                    <span className="text-white">
-                      {preview.priceImpact.toFixed(2)}%
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between mb-2">
-                    <span className="text-gray-400">New market odds</span>
-                    <span className="text-white">
-                      {(preview.newOdds * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </>
-              )}
-
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Current odds</span>
-                <span className="text-white">
-                  {selectedAnswer 
-                    ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '%'
-                    : '0%'}
-                </span>
-              </div>
-              
-              {/* User's current position */}
-              {selectedAnswer && (
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-400">Your position</span>
-                  {isSharesLoading ? (
-                    <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
-                  ) : (
-                    <span className="text-white">
-                      {formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Profitability display for buys */}
-              {tradeType === 'buy' && preview.isValid && selectedAnswer && (
-                <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
-                  <span className="text-gray-400">If {selectedAnswer.name} wins</span>
-                  <span className="text-green-400">
-                    {formatCurrency(preview.sharesReceived)} 
-                    <span className="text-xs ml-1">
-                      ({preview.expectedProfit >= 0 ? '+' : ''}{formatCurrency(preview.expectedProfit)})
-                    </span>
-                  </span>
-                </div>
-              )}
-
-
-
-
-            </>
-          )}
-        </div>
-
-        {/* Action Button */}
-        <button 
-          onClick={handleSubmit}
-          className={`w-full py-4 rounded-lg transition-colors flex justify-center items-center ${
-            isLoading || isSubmitting || !validation.isValid
-              ? 'bg-gray-600 cursor-not-allowed opacity-50' 
-              : 'bg-blue-600 hover:bg-blue-700'
-          }`}
-          disabled={isLoading || isSubmitting || !validation.isValid}
-        >
-          {isSubmitting ? (
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          ) : (
-            `${tradeType === 'buy' ? 'Buy' : 'Sell'} ${selectedAnswer?.name || 'Outcome'}`
-          )}
-        </button>
-        
-        {/* Validation messages for selling */}
-        {!isLoading && tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && (
-          <p className="text-yellow-500 text-sm mt-2 text-center">
-            {formatShares(userShares[selectedAnswer.id]) <= 0 
-              ? `You do not own any shares of ${selectedAnswer.name}`
-              : formatShares(totalPrice) > formatShares(userShares[selectedAnswer.id])
-                ? `You only own ${formatShares(userShares[selectedAnswer.id]).toFixed(2)} shares of ${selectedAnswer.name}`
-                : null
-            }
-          </p>
-        )}
-
-        {/* Error/Success Messages */}
-        {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
-        {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
-        
-        {/* General loading indicator */}
-        {isLoading && (
-          <p className="mt-4 text-blue-400 text-center flex items-center justify-center">
-            <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Loading market data...
-          </p>
+    <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-lg border border-[#2C2C2C] p-6">
+      {/* Market Title */}
+      <div className="mb-6">
+        {isMarketLoading ? (
+          <div className="h-6 bg-[#2C2C2C] rounded w-2/3 animate-pulse"></div>
+        ) : (
+          <h2 className="text-white text-xl font-semibold">
+            {market?.name}
+          </h2>
         )}
       </div>
+
+      {/* Trade Type Selector */}
+      <div className="flex mb-6">
+        <button
+          onClick={() => setTradeType('buy')}
+          className={`w-1/2 py-2 ${
+            tradeType === 'buy' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-[#2C2C2C] text-gray-400'
+          } rounded-l-lg transition-colors`}
+          disabled={isLoading}
+        >
+          Buy
+        </button>
+        <button
+          onClick={() => setTradeType('sell')}
+          className={`w-1/2 py-2 ${
+            tradeType === 'sell' 
+              ? 'bg-blue-600 text-white' 
+              : 'bg-[#2C2C2C] text-gray-400'
+          } rounded-r-lg transition-colors`}
+          disabled={isLoading}
+        >
+          Sell
+        </button>
+      </div>
+
+      {/* Outcome Buttons */}
+      <div className="flex gap-4 mb-6">
+        {isMarketLoading ? (
+          <>
+            <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
+            <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
+          </>
+        ) : answers.length > 0 ? (
+          answers.map((answer) => (
+            <button
+              key={answer.id}
+              onClick={() => setSelectedAnswer(answer)}
+              className={`flex-1 py-3 rounded-lg transition-colors ${
+                selectedAnswer?.id === answer.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-[#2C2C2C] text-gray-400 hover:bg-[#3C3C3C]'
+              }`}
+              disabled={isLoading}
+            >
+              <div className="flex justify-between px-4">
+                <span>{answer.name}</span>
+                <span>{getOutcomeProbability(answer)}¢</span>
+              </div>
+            </button>
+          ))
+        ) : (
+          <div className="w-full text-center text-gray-400 py-3">
+            No outcomes available for this market
+          </div>
+        )}
+      </div>
+
+      {/* Amount Input */}
+      <div className="mb-6">
+        <label className="block text-gray-400 mb-2">
+          {tradeType === 'buy' ? 'Amount to Spend ($)' : 'Shares to Sell'}
+        </label>
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            {tradeType === 'buy' ? '$' : '#'}
+          </span>
+          <input
+            type="number"
+            value={totalPrice}
+            onChange={(e) => setTotalPrice(Number(e.target.value))}
+            className="w-full bg-[#2C2C2C] text-white py-3 pl-6 pr-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            placeholder="0"
+            disabled={isLoading}
+          />
+        </div>
+      </div>
+
+      {/* Max Buy/Sell All buttons */}
+      {tradeType === 'buy' && selectedAnswer && (
+        <button
+          onClick={() => {
+            const maxAmount = getMaxPurchaseAmount();
+            if (maxAmount > 0) {
+              setTotalPrice(maxAmount);
+            }
+          }}
+          className="mb-4 w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors text-sm"
+          disabled={isLoading || isSubmitting || getMaxPurchaseAmount() <= 0}
+        >
+          Max Buy (${getMaxPurchaseAmount().toFixed(2)})
+        </button>
+      )}
+
+      {tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] > 0 && (
+        <button
+          onClick={() => setTotalPrice(formatShares(userShares[selectedAnswer.id] || 0))}
+          className="mb-4 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors text-sm"
+          disabled={isLoading || isSubmitting}
+        >
+          Sell All ({formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares)
+        </button>
+      )}
+
+      {/* Enhanced Trade Details */}
+      <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : (
+          <>
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-400">
+                {tradeType === 'buy' ? 'Shares to Receive' : 'Amount to Receive'}
+              </span>
+              <span className="text-white">
+                {tradeType === 'buy' 
+                  ? formatShares(computedShares).toFixed(2)
+                  : calculateSellAmount()
+                }
+              </span>
+            </div>
+
+            {/* Buy-specific details with price impact */}
+            {tradeType === 'buy' && preview.isValid && selectedAnswer && (
+              <>
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">Average price per share</span>
+                  <span className="text-white">
+                    {formatCurrency(preview.avgPrice)}
+                  </span>
+                </div>
+
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">Price impact</span>
+                  <span className="text-white">
+                    {preview.priceImpact.toFixed(2)}%
+                  </span>
+                </div>
+
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-400">New market odds</span>
+                  <span className="text-white">
+                    {(preview.newOdds * 100).toFixed(1)}%
+                  </span>
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-between mb-2">
+              <span className="text-gray-400">Current odds</span>
+              <span className="text-white">
+                {selectedAnswer 
+                  ? (selectedAnswer.tokens / totalOutcomeTokens * 100).toFixed(1) + '%'
+                  : '0%'}
+              </span>
+            </div>
+            
+            {/* User's current position */}
+            {selectedAnswer && (
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Your position</span>
+                {isSharesLoading ? (
+                  <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
+                ) : (
+                  <span className="text-white">
+                    {formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Profitability display for buys */}
+            {tradeType === 'buy' && preview.isValid && selectedAnswer && (
+              <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
+                <span className="text-gray-400">If {selectedAnswer.name} wins</span>
+                <span className="text-green-400">
+                  {formatCurrency(preview.sharesReceived)} 
+                  <span className="text-xs ml-1">
+                    ({preview.expectedProfit >= 0 ? '+' : ''}{formatCurrency(preview.expectedProfit)})
+                  </span>
+                </span>
+              </div>
+            )}
+
+
+
+
+          </>
+        )}
+      </div>
+
+      {/* Action Button */}
+      <button 
+        onClick={handleSubmit}
+        className={`w-full py-4 rounded-lg transition-colors flex justify-center items-center ${
+          isLoading || isSubmitting || !validation.isValid
+            ? 'bg-gray-600 cursor-not-allowed opacity-50' 
+            : 'bg-blue-600 hover:bg-blue-700'
+        }`}
+        disabled={isLoading || isSubmitting || !validation.isValid}
+      >
+        {isSubmitting ? (
+          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+        ) : (
+          `${tradeType === 'buy' ? 'Buy' : 'Sell'} ${selectedAnswer?.name || 'Outcome'}`
+        )}
+      </button>
+      
+      {/* Validation messages for selling */}
+      {!isLoading && tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && (
+        <p className="text-yellow-500 text-sm mt-2 text-center">
+          {formatShares(userShares[selectedAnswer.id]) <= 0 
+            ? `You do not own any shares of ${selectedAnswer.name}`
+            : formatShares(totalPrice) > formatShares(userShares[selectedAnswer.id])
+              ? `You only own ${formatShares(userShares[selectedAnswer.id]).toFixed(2)} shares of ${selectedAnswer.name}`
+              : null
+          }
+        </p>
+      )}
+
+      {/* Error/Success Messages */}
+      {error && <p className="mt-4 text-red-500 text-center">{error}</p>}
+      {success && <p className="mt-4 text-green-500 text-center">{success}</p>}
+      
+      {/* General loading indicator */}
+      {isLoading && (
+        <p className="mt-4 text-blue-400 text-center flex items-center justify-center">
+          <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Loading market data...
+        </p>
+      )}
     </div>
   );
 }
