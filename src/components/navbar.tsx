@@ -45,6 +45,12 @@ export default function Navbar() {
         >
           Markets
         </Link>
+        <Link
+          href="/leaderboard"
+          className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+        >
+          Leaderboard
+        </Link>
         {user && (
           <Link
             href="/profile"
