@@ -76,7 +76,7 @@ export default function AuthPage() {
           </button>
         </div>
 
-        {message && <p className="text-sm text-center text-red-500">{message}</p>}
+        {message && <p className="text-sm text-center text-blue-500">{message}</p>}
       </div>
     </div>
   );
