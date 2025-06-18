@@ -21,7 +21,7 @@ type MarketStatusFilter = 'all' | 'current' | 'previous';
 export default function MarketsList() {
   const [markets, setMarkets] = useState<Market[] | null>(null);
   const [selectedTag, setSelectedTag] = useState("all");
-  const [statusFilter, setStatusFilter] = useState<MarketStatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<MarketStatusFilter>("current");
 
   useEffect(() => {
     getMarkets().then(setMarkets);

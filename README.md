@@ -187,6 +187,10 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Development Status
 
+### June 18, 2025
+- Add categories for current and previous markets
+- Fix red text for signup successful
+
 ### June 11, 2025
 - Update market details page with trade form next to price chart
 - Update leaderboard and add to navbar
