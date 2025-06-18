@@ -12,6 +12,8 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[];
+  status?: 'open' | 'closed' | 'annulled';
+  close_date?: string;
   outcomes?: Outcome[];
 }
 
@@ -25,6 +27,8 @@ export async function getMarkets(): Promise<Market[] | null> {
       token_pool,
       market_maker,
       tags,
+      status,
+      close_date,
       outcomes!market_id( name, tokens )
     `);
 
