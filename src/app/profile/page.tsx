@@ -74,19 +74,21 @@ export default function UserProfile() {
       const fetchPNL = async () => {
         setIsLoadingPnl(true);
         try {
-          // Fetch all predictions for this user
+          // Fetch all predictions for this user with market_id > 40
           const { data: predictionsData, error: predictionsError } = await supabase
             .from("predictions")
             .select("market_id, trade_value")
-            .eq("user_id", user.id);
+            .eq("user_id", user.id)
+            .gt("market_id", 40); // Only include markets with ID > 40
 
           if (predictionsError) throw predictionsError;
 
-          // Fetch all payouts for this user (if any)
+          // Fetch all payouts for this user (if any) from markets with ID > 40
           const { data: payoutsData, error: payoutsError } = await supabase
             .from("payouts")
             .select("*")
-            .eq("user_id", user.id);
+            .eq("user_id", user.id)
+            .gt("market_id", 40); // Only include markets with ID > 40
 
           if (payoutsError) {
             console.warn("Error fetching payouts:", payoutsError);
@@ -113,19 +115,18 @@ export default function UserProfile() {
             });
           }
 
-          // Get user's balance (or default to 100 if not available)
-          const balance = (profile?.balance || 100);
+          // Use base amount of 1000 instead of user's balance
+          const baseAmount = 1000;
           
-          // Calculate percentage PNL based on the balance
-          // Avoid division by zero
-          const percentageChange = balance > 0 ? (totalPNL / balance) * 100 : 0;
+          // Calculate percentage PNL based on the base amount of 1000
+          const percentageChange = (totalPNL / baseAmount) * 100;
 
-          // Calculate volume traded (absolute sum of all transactions)
+          // Calculate volume traded (absolute sum of all transactions) from markets > 40
           const volumeTraded = predictionsData 
             ? predictionsData.reduce((acc, pred) => acc + Math.abs(pred.trade_value || 0), 0)
             : 0;
 
-          // Calculate number of unique markets traded
+          // Calculate number of unique markets traded (only markets > 40)
           const uniqueMarkets = new Set(predictionsData?.map(pred => pred.market_id) || []);
           
           setPnlMetrics({
@@ -266,7 +267,9 @@ export default function UserProfile() {
               </div>
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
-              <div className="text-gray-400 mb-2">Profit/loss</div>
+              <div className="text-gray-400 mb-2">
+                Profit/loss
+              </div>
               {isLoadingPnl ? (
                 <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
               ) : (
@@ -281,7 +284,9 @@ export default function UserProfile() {
               )}
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
-              <div className="text-gray-400 mb-2">Volume traded</div>
+              <div className="text-gray-400 mb-2">
+                Volume traded
+              </div>
               <div className="text-white font-bold text-xl">
                 {isLoadingPnl ? (
                   <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
@@ -291,7 +296,9 @@ export default function UserProfile() {
               </div>
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
-              <div className="text-gray-400 mb-2">Markets traded</div>
+              <div className="text-gray-400 mb-2">
+                Markets traded
+              </div>
               <div className="text-white font-bold text-xl">
                 {isLoadingPnl ? (
                   <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
