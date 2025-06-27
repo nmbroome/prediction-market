@@ -187,6 +187,9 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Development Status
 
+### June 27, 2025
+- Update pnl calculation on profile
+
 ### June 18, 2025
 - Add categories for current and previous markets
 - Fix red text for signup successful
