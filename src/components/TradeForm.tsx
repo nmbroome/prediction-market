@@ -42,6 +42,7 @@ export default function TradeForm() {
   const [computedShares, setComputedShares] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [userBalance, setUserBalance] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
@@ -51,23 +52,47 @@ export default function TradeForm() {
   const [isMarketLoading, setIsMarketLoading] = useState<boolean>(true);
   const [isSharesLoading, setIsSharesLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [isBalanceLoading, setIsBalanceLoading] = useState<boolean>(true);
 
   // State to track user's share balances
   const [userShares, setUserShares] = useState<{[outcomeId: number]: number}>({});
 
-  // Fetch logged-in user.
+  // Fetch logged-in user and their balance.
   useEffect(() => {
-    async function fetchUser() {
+    async function fetchUserAndBalance() {
       setIsUserLoading(true);
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) {
-        setError(`Error fetching user: ${error.message}`);
-      } else {
-        setUser(user);
+      setIsBalanceLoading(true);
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        setError(`Error fetching user: ${userError.message}`);
+        setIsUserLoading(false);
+        setIsBalanceLoading(false);
+        return;
       }
+      
+      setUser(user);
       setIsUserLoading(false);
+
+      if (user) {
+        // Fetch user's balance
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("balance")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error fetching user balance:", profileError.message);
+          setUserBalance(0); // Default to 0 if we can't fetch balance
+        } else {
+          setUserBalance(Number(profileData?.balance || 0));
+        }
+      }
+      
+      setIsBalanceLoading(false);
     }
-    fetchUser();
+    fetchUserAndBalance();
   }, []);
 
   // Fetch market details and outcomes.
@@ -145,6 +170,25 @@ export default function TradeForm() {
     
     fetchUserShares();
   }, [user, market, answers]);
+
+  // Refresh user balance after successful trades
+  const refreshUserBalance = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profileData, error } = await supabase
+        .from("profiles")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!error && profileData) {
+        setUserBalance(Number(profileData.balance || 0));
+      }
+    } catch (e) {
+      console.error("Error refreshing user balance:", e);
+    }
+  }, [user]);
 
   // Calculate trade preview using CPMM
   const calculateTradePreview = (): TradePreview => {
@@ -249,7 +293,7 @@ export default function TradeForm() {
     }
   };
 
-  // Calculate maximum safe purchase amount
+  // Calculate maximum safe purchase amount based on user balance
   const getMaxPurchaseAmount = (): number => {
     if (!selectedAnswer || answers.length !== 2 || tradeType !== 'buy') {
       return 0;
@@ -262,13 +306,18 @@ export default function TradeForm() {
     // Maximum shares we can buy = available tokens for this outcome
     const maxShares = selectedAnswer.tokens;
     
-    // Maximum dollar amount = max shares × current odds
-    // This ensures we don't try to buy more shares than available
-    const maxDollarAmount = maxShares * currentOdds;
+    // Maximum dollar amount based on market liquidity
+    const maxDollarAmountByLiquidity = maxShares * currentOdds;
+    
+    // Maximum dollar amount based on user balance
+    const maxDollarAmountByBalance = userBalance;
+    
+    // Take the minimum of the two constraints
+    const constrainedMaxAmount = Math.min(maxDollarAmountByLiquidity, maxDollarAmountByBalance);
     
     // Also check CPMM constraints using binary search for safety
     let low = 0;
-    let high = maxDollarAmount;
+    let high = constrainedMaxAmount;
     let safeMaxAmount = 0;
 
     for (let i = 0; i < 50; i++) {
@@ -346,7 +395,30 @@ export default function TradeForm() {
     }).format(value);
   };
 
-  // Handle buy prediction with CPMM validation
+  // Enhanced buy validation that checks balance
+  const validateBuyTrade = (): { isValid: boolean; error?: string } => {
+    if (!selectedAnswer || totalPrice <= 0) {
+      return { isValid: false, error: "Invalid trade parameters" };
+    }
+
+    // Check user balance
+    if (totalPrice > userBalance) {
+      return { 
+        isValid: false, 
+        error: `Insufficient balance. You have ${formatCurrency(userBalance)} but need ${formatCurrency(totalPrice)}.` 
+      };
+    }
+
+    // Check market constraints
+    const preview = calculateTradePreview();
+    if (!preview.isValid) {
+      return { isValid: false, error: preview.error || "Invalid trade" };
+    }
+
+    return { isValid: true };
+  };
+
+  // Handle buy prediction with enhanced validation
   const handleBuy = async () => {
     setError(null);
     setSuccess(null);
@@ -362,21 +434,17 @@ export default function TradeForm() {
       setIsSubmitting(false);
       return;
     }
-    if (totalPrice <= 0) {
-      setError("Please enter a total price greater than 0.");
-      setIsSubmitting(false);
-      return;
-    }
-    if (answers.length !== 2) {
-      setError("This market currently supports only binary outcomes.");
+
+    // Enhanced validation including balance check
+    const validation = validateBuyTrade();
+    if (!validation.isValid) {
+      setError(validation.error || "Invalid trade");
       setIsSubmitting(false);
       return;
     }
 
-    // Validate using CPMM
-    const preview = calculateTradePreview();
-    if (!preview.isValid) {
-      setError(preview.error || "Invalid trade");
+    if (answers.length !== 2) {
+      setError("This market currently supports only binary outcomes.");
       setIsSubmitting(false);
       return;
     }
@@ -404,7 +472,7 @@ export default function TradeForm() {
         throw new Error("Trade would result in negative token pools.");
       }
 
-      // Create prediction
+      // Create prediction (this will also update user balance)
       await addPrediction({
         user_id: user.id,
         market_id: market.id,
@@ -443,7 +511,12 @@ export default function TradeForm() {
         `Purchase successful! You spent ${formatCurrency(totalPrice)} and received ${sharesPurchased.toFixed(2)} shares.`
       );
 
-      await fetchMarketData();
+      // Refresh data
+      await Promise.all([
+        fetchMarketData(),
+        refreshUserBalance()
+      ]);
+      
       setSelectedAnswer(null);
       setTotalPrice(10);
     } catch (e: unknown) {
@@ -457,7 +530,7 @@ export default function TradeForm() {
     }
   };
   
-  // Handle sell (unchanged)
+  // Handle sell (unchanged but refresh balance after)
   const handleSell = async () => {
     setError(null);
     setSuccess(null);
@@ -535,7 +608,12 @@ export default function TradeForm() {
     
       setSuccess(`Successfully sold ${formatShares(sellShares).toFixed(2)} shares of ${selectedAnswer.name} and received ${formatCurrency(receivedAmount)}`);
       
-      await fetchMarketData();
+      // Refresh data
+      await Promise.all([
+        fetchMarketData(),
+        refreshUserBalance()
+      ]);
+      
       setSelectedAnswer(null);
       setTotalPrice(10);
     } catch (e: unknown) {
@@ -564,21 +642,21 @@ export default function TradeForm() {
     return formatCurrency(receivedAmount);
   };
 
-  // Validation
+  // Enhanced validation that includes balance check
   const validateTrade = (): { isValid: boolean; reason?: string } => {
     if (!selectedAnswer || totalPrice <= 0) {
       return { isValid: false };
     }
 
     if (tradeType === 'buy') {
-      const preview = calculateTradePreview();
-      return { isValid: preview.isValid };
+      const validation = validateBuyTrade();
+      return { isValid: validation.isValid, reason: validation.error };
     }
 
     if (tradeType === 'sell') {
       const owned = userShares[selectedAnswer.id] || 0;
       if (formatShares(totalPrice) > formatShares(owned)) {
-        return { isValid: false };
+        return { isValid: false, reason: `Insufficient shares` };
       }
     }
 
@@ -597,7 +675,7 @@ export default function TradeForm() {
     </div>
   );
 
-  const isLoading = isUserLoading || isMarketLoading;
+  const isLoading = isUserLoading || isMarketLoading || isBalanceLoading;
 
   return (
     <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-lg border border-[#2C2C2C] p-6">
@@ -610,6 +688,18 @@ export default function TradeForm() {
             {market?.name}
           </h2>
         )}
+      </div>
+
+      {/* User Balance Display */}
+      <div className="mb-4 p-3 bg-[#2C2C2C] rounded-lg">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-400">Your Balance:</span>
+          {isBalanceLoading ? (
+            <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
+          ) : (
+            <span className="text-white font-medium">{formatCurrency(userBalance)}</span>
+          )}
+        </div>
       </div>
 
       {/* Trade Type Selector */}
@@ -686,12 +776,20 @@ export default function TradeForm() {
             className="w-full bg-[#2C2C2C] text-white py-3 pl-6 pr-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
             placeholder="0"
             disabled={isLoading}
+            max={tradeType === 'buy' ? userBalance : undefined}
           />
         </div>
+        
+        {/* Balance warning for buy trades */}
+        {tradeType === 'buy' && totalPrice > userBalance && !isBalanceLoading && (
+          <p className="text-red-400 text-sm mt-1">
+            Amount exceeds your balance of {formatCurrency(userBalance)}
+          </p>
+        )}
       </div>
 
       {/* Max Buy/Sell All buttons */}
-      {tradeType === 'buy' && selectedAnswer && (
+      {tradeType === 'buy' && selectedAnswer && !isBalanceLoading && (
         <button
           onClick={() => {
             const maxAmount = getMaxPurchaseAmount();
@@ -796,9 +894,15 @@ export default function TradeForm() {
               </div>
             )}
 
-
-
-
+            {/* Balance check warning for buys */}
+            {tradeType === 'buy' && totalPrice > userBalance && !isBalanceLoading && (
+              <div className="flex justify-between border-t border-red-600 pt-2 mt-2">
+                <span className="text-red-400">Balance needed</span>
+                <span className="text-red-400">
+                  {formatCurrency(totalPrice - userBalance)} more
+                </span>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -823,6 +927,13 @@ export default function TradeForm() {
         )}
       </button>
       
+      {/* Enhanced validation messages */}
+      {!isLoading && !validation.isValid && validation.reason && (
+        <p className="text-red-400 text-sm mt-2 text-center">
+          {validation.reason}
+        </p>
+      )}
+
       {/* Validation messages for selling */}
       {!isLoading && tradeType === 'sell' && selectedAnswer && userShares[selectedAnswer.id] !== undefined && (
         <p className="text-yellow-500 text-sm mt-2 text-center">

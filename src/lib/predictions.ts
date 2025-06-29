@@ -14,6 +14,31 @@ export type Prediction = {
 export async function addPrediction(prediction: Prediction) {
   const { user_id, market_id, outcome_id, trade_value, trade_type } = prediction;
 
+  // 0. For buy trades, validate user has sufficient balance BEFORE making any changes
+  if (trade_type === 'buy') {
+    const tradeAmount = Math.abs(trade_value); // trade_value is negative for buys
+    
+    // Fetch the current balance
+    const { data: profileData, error: profileFetchError } = await supabase
+      .from("profiles")
+      .select("balance")
+      .eq("user_id", user_id)
+      .single();
+
+    if (profileFetchError) {
+      throw new Error(`Failed to fetch profile: ${profileFetchError.message}`);
+    }
+
+    const currentBalance = Number(profileData.balance);
+    
+    // Check if user has sufficient balance
+    if (currentBalance < tradeAmount) {
+      throw new Error(
+        `Insufficient balance. You have $${currentBalance.toFixed(2)} but need $${tradeAmount.toFixed(2)}.`
+      );
+    }
+  }
+
   // 1. Insert the prediction record.
   const { data: predictionData, error: predictionError } = await supabase
     .from("predictions")
@@ -26,7 +51,7 @@ export async function addPrediction(prediction: Prediction) {
   }
 
   // 2. Update the user's balance in the profiles table.
-  // Fetch the current balance.
+  // Fetch the current balance again (in case it changed since our validation)
   const { data: profileData, error: profileFetchError } = await supabase
     .from("profiles")
     .select("balance")
@@ -43,6 +68,19 @@ export async function addPrediction(prediction: Prediction) {
   const currentBalance = Number(profileData.balance);
   const newBalance = currentBalance + trade_value; // trade_value is already negative for buys
 
+  // Double-check balance for buy trades (protection against race conditions)
+  if (trade_type === 'buy' && newBalance < 0) {
+    // Rollback the prediction if balance would go negative
+    await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", predictionData.id);
+    
+    throw new Error(
+      `Transaction failed: Insufficient balance. Current balance: $${currentBalance.toFixed(2)}, Required: $${Math.abs(trade_value).toFixed(2)}`
+    );
+  }
+
   // Update the balance.
   const { error: profileUpdateError } = await supabase
     .from("profiles")
@@ -50,6 +88,12 @@ export async function addPrediction(prediction: Prediction) {
     .eq("user_id", user_id);
 
   if (profileUpdateError) {
+    // Rollback the prediction if balance update fails
+    await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", predictionData.id);
+    
     throw new Error(`Failed to update balance: ${profileUpdateError.message}`);
   }
 
@@ -62,6 +106,17 @@ export async function addPrediction(prediction: Prediction) {
     .single();
 
   if (outcomeFetchError) {
+    // Rollback changes if outcome fetch fails
+    await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", predictionData.id);
+    
+    await supabase
+      .from("profiles")
+      .update({ balance: currentBalance })
+      .eq("user_id", user_id);
+    
     throw new Error(`Failed to fetch outcome tokens: ${outcomeFetchError.message}`);
   }
 
@@ -80,6 +135,17 @@ export async function addPrediction(prediction: Prediction) {
     .eq("id", outcome_id);
 
   if (outcomeUpdateError) {
+    // Rollback changes if outcome update fails
+    await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", predictionData.id);
+    
+    await supabase
+      .from("profiles")
+      .update({ balance: currentBalance })
+      .eq("user_id", user_id);
+    
     throw new Error(`Failed to update outcome tokens: ${outcomeUpdateError.message}`);
   }
 
@@ -90,6 +156,22 @@ export async function addPrediction(prediction: Prediction) {
     .eq("market_id", market_id);
 
   if (outcomesFetchError) {
+    // Rollback changes if outcomes fetch fails
+    await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", predictionData.id);
+    
+    await supabase
+      .from("profiles")
+      .update({ balance: currentBalance })
+      .eq("user_id", user_id);
+    
+    await supabase
+      .from("outcomes")
+      .update({ tokens: currentTokens })
+      .eq("id", outcome_id);
+    
     throw new Error(`Failed to fetch all outcomes: ${outcomesFetchError.message}`);
   }
 
@@ -103,6 +185,22 @@ export async function addPrediction(prediction: Prediction) {
     .eq("id", market_id);
 
   if (marketUpdateError) {
+    // Rollback changes if market update fails
+    await supabase
+      .from("predictions")
+      .delete()
+      .eq("id", predictionData.id);
+    
+    await supabase
+      .from("profiles")
+      .update({ balance: currentBalance })
+      .eq("user_id", user_id);
+    
+    await supabase
+      .from("outcomes")
+      .update({ tokens: currentTokens })
+      .eq("id", outcome_id);
+    
     throw new Error(`Failed to update market token_pool: ${marketUpdateError.message}`);
   }
 
