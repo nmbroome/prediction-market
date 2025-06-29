@@ -187,6 +187,9 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 
 ## Development Status
 
+### June 29, 2025
+- Add 24hr price change indicator to market card
+
 ### June 28, 2025
 - Update trade form and predictions functions
 
