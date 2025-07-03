@@ -6,31 +6,11 @@ import supabase from "@/lib/supabase/createClient";
 import { addPrediction } from "@/lib/predictions";
 import { fixedPriceMarketMaker, cpmm_update } from "@/lib/marketMakers";
 import { User } from "@supabase/supabase-js";
-
-interface Market {
-  id: number;
-  name: string;
-  description: string;
-  token_pool: number;
-  market_maker: string;
-}
-
-interface Answer {
-  id: number;
-  name: string;
-  tokens: number;
-  market_id: number;
-}
-
-interface TradePreview {
-  sharesReceived: number;
-  avgPrice: number;
-  priceImpact: number;
-  newOdds: number;
-  expectedProfit: number;
-  isValid: boolean;
-  error: string | null;
-}
+import {
+  Market,
+  Answer,
+  TradePreview,
+} from "@/lib/tradingTypes";
 
 export default function TradeForm() {
   const { id } = useParams();
