@@ -144,11 +144,11 @@ export default function MarketCard({
     return `${sign}${change.changeAmount.toFixed(1)}%`;
   };
 
-  // Get price change color
+  // Get price change color - updated to include gray for no change
   const getPriceChangeColor = (changeAmount: number) => {
     if (changeAmount > 0) return 'text-green-500';
     if (changeAmount < 0) return 'text-red-500';
-    return 'text-gray-500';
+    return 'text-gray-500'; // Gray for no change (changeAmount === 0)
   };
 
   // Ensure "Yes" and "No" are the first two outcomes
