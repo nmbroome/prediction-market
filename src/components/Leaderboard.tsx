@@ -7,16 +7,34 @@ interface LeaderboardEntry {
   user_id: string;
   username?: string;
   payment_id?: string | null;
-  total_profit: number;
+  total_profit_loss: number;
   percent_pnl: number;
-  balance: number;
+  total_bought_amount: number;
+  remaining_shares_value: number;
+  net_trade_pnl: number;
 }
 
 interface Profile {
   user_id: string;
   username?: string;
-  balance: number;
   payment_id?: string | null;
+}
+
+interface Prediction {
+  user_id: string;
+  market_id: number;
+  outcome_id: number;
+  shares_amt: number;
+  trade_value: number;
+  trade_type: 'buy' | 'sell';
+  created_at: string;
+}
+
+interface Outcome {
+  id: number;
+  name: string;
+  tokens: number;
+  market_id: number;
 }
 
 export default function Leaderboard() {
@@ -29,10 +47,12 @@ export default function Leaderboard() {
   useEffect(() => {
     const fetchAndCalculateLeaderboardData = async () => {
       try {
-        // Get all users with their profiles
+        setLoading(true);
+        
+        // 1. Get all users with their profiles
         const { data: profiles, error: profilesError } = await supabase
           .from("profiles")
-          .select("user_id, username, balance, payment_id");
+          .select("user_id, username, payment_id");
 
         if (profilesError) throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
         if (!profiles) throw new Error("No user profiles found");
@@ -42,246 +62,127 @@ export default function Leaderboard() {
         
         console.log(`Found ${validProfiles.length} valid profiles out of ${profiles.length} total`);
 
-        // Target specific market ID
-        const targetMarketId = 35;
-        console.log(`Targeting market ID: ${targetMarketId}`);
+        // 2. Get all predictions from all markets (or filter by specific markets if needed)
+        const { data: allPredictions, error: predictionsError } = await supabase
+          .from("predictions")
+          .select("user_id, market_id, outcome_id, shares_amt, trade_value, trade_type, created_at")
+          .gt("market_id", 40); // Only include markets with ID > 40 (adjust as needed)
 
-        // Get the specific market to verify it exists
-        const { data: targetMarket, error: marketError } = await supabase
-          .from("markets")
-          .select("id, name, status")
-          .eq("id", targetMarketId)
-          .single();
-
-        if (marketError || !targetMarket) {
-          console.warn("Error fetching target market or market not found:", marketError);
-          setLeaderboardData([]);
-          return;
+        if (predictionsError) {
+          console.warn("Error fetching predictions:", predictionsError);
         }
 
-        console.log(`Found target market: ${targetMarket.name} (Status: ${targetMarket.status})`);
-
-        // Get outcomes for the target market to calculate odds
-        const { data: outcomes, error: outcomesError } = await supabase
+        // 3. Get all outcomes to calculate current market odds
+        const { data: allOutcomes, error: outcomesError } = await supabase
           .from("outcomes")
-          .select("id, name, market_id, tokens")
-          .eq("market_id", targetMarketId);
+          .select("id, name, tokens, market_id")
+          .gt("market_id", 40); // Only include outcomes from markets with ID > 40
 
         if (outcomesError) {
           console.warn("Error fetching outcomes:", outcomesError);
         }
 
-        // Fetch predictions for the target market only
-        const { data: allPredictions, error: predictionsError } = await supabase
-          .from("predictions")
-          .select("user_id, shares_amt, market_odds, trade_value, trade_type, market_id, outcome_id, created_at")
-          .eq("market_id", targetMarketId);
+        console.log(`Found ${allPredictions?.length || 0} predictions and ${allOutcomes?.length || 0} outcomes`);
 
-        if (predictionsError) {
-          console.warn("Error fetching predictions:", predictionsError);
-          console.log("Target market ID:", targetMarketId);
-        }
-
-        // Fetch payouts for the target market only (if payouts table exists)
-        const { data: allPayouts, error: allPayoutsError } = await supabase
-          .from("payouts")
-          .select("*")
-          .eq("market_id", targetMarketId);
-
-        if (allPayoutsError) {
-          console.warn("Error fetching payouts (table may not exist):", allPayoutsError);
-        }
-
-        console.log(`Found ${allPredictions?.length || 0} predictions, ${allPayouts?.length || 0} payouts, and ${outcomes?.length || 0} outcomes for market ${targetMarketId}`);
-
-        // Debug: Log the actual market ID and check data
-        console.log("Target market ID:", targetMarketId);
-        if (allPredictions && allPredictions.length > 0) {
-          console.log("Sample prediction:", allPredictions[0]);
-        }
-        if (allPayouts && allPayouts.length > 0) {
-          console.log("Sample payout:", allPayouts[0]);
-        }
-
-        // Determine payout amount column name by checking common possibilities
-        let payoutColumnName = "payout_amount";
-        const possibleColumnNames = ["payout_amount", "amount", "payoutAmount", "value", "payout", "shares"];
-
-        if (allPayouts && allPayouts.length > 0) {
-          const firstPayoutRecord = allPayouts[0];
-          
-          for (const colName of possibleColumnNames) {
-            if (colName in firstPayoutRecord && typeof firstPayoutRecord[colName] === 'number') {
-              payoutColumnName = colName;
-              console.log(`Found payout amount in column: ${payoutColumnName}`);
-              break;
-            }
-          }
-        }
-
-        // Calculate current positions and trading PnL from predictions
-        const predictionsByUser: Record<string, number> = {};
-        const positionsByUser: Record<string, Record<string, number>> = {}; // user_id -> outcome_id -> shares
-        
-        if (allPredictions && allPredictions.length > 0) {
-          allPredictions.forEach(prediction => {
-            const userId = prediction.user_id;
-            const outcomeId = prediction.outcome_id.toString();
-            const tradeValue = Number(prediction.trade_value || 0);
-            const sharesAmt = Number(prediction.shares_amt || 0);
-            const tradeType = prediction.trade_type;
-            
-            // Track trading PnL
-            if (!predictionsByUser[userId]) {
-              predictionsByUser[userId] = 0;
-            }
-            predictionsByUser[userId] += tradeValue;
-            
-            // Track current positions
-            if (!positionsByUser[userId]) {
-              positionsByUser[userId] = {};
-            }
-            if (!positionsByUser[userId][outcomeId]) {
-              positionsByUser[userId][outcomeId] = 0;
-            }
-            
-            // Update position based on trade type
-            if (tradeType === "buy") {
-              positionsByUser[userId][outcomeId] += sharesAmt;
-            } else if (tradeType === "sell") {
-              positionsByUser[userId][outcomeId] -= sharesAmt;
-            }
-            
-            console.log(`User ${userId}: ${tradeType} ${sharesAmt} shares of outcome ${outcomeId}, trade value: ${tradeValue}`);
-          });
-        }
-
-        // Group payouts by user_id for faster lookup
-        const payoutsByUser: Record<string, number> = {};
-        if (allPayouts && allPayouts.length > 0) {
-          allPayouts.forEach(payout => {
-            const userId = payout.user_id;
-            // Try each column name until we find a valid number
-            let amount = 0;
-            for (const colName of possibleColumnNames) {
-              if (colName in payout && !isNaN(Number(payout[colName]))) {
-                amount = Number(payout[colName] || 0);
-                break;
-              }
-            }
-            
-            if (!payoutsByUser[userId]) {
-              payoutsByUser[userId] = 0;
-            }
-            
-            payoutsByUser[userId] += amount;
-          });
-        }
-
-        // Create maps for outcome data and market odds calculation
-        const outcomeMap: Record<string, { market_id: string; tokens: number; name: string }> = {};
-        const marketTokenTotals: Record<string, number> = {};
-        
-        if (outcomes && outcomes.length > 0) {
-          outcomes.forEach(outcome => {
-            outcomeMap[outcome.id] = {
-              market_id: outcome.market_id,
-              tokens: Number(outcome.tokens || 0),
-              name: outcome.name
-            };
-            
-            // Calculate total tokens per market
-            if (!marketTokenTotals[outcome.market_id]) {
-              marketTokenTotals[outcome.market_id] = 0;
-            }
-            marketTokenTotals[outcome.market_id] += Number(outcome.tokens || 0);
-          });
-        }
-
-        // Create a map of outcome odds for quick lookup
-        const outcomeOddsMap: Record<string, number> = {};
-        if (outcomes && outcomes.length > 0) {
-          outcomes.forEach(outcome => {
-            const tokens = Number(outcome.tokens || 0);
-            const totalTokens = marketTokenTotals[outcome.market_id] || 0;
-            
-            // Calculate odds as outcome_tokens / total_market_tokens
-            const epsilon = 0.001;
-            const adjustedTotal = Math.max(totalTokens, epsilon);
-            const odds = totalTokens > 0 ? tokens / adjustedTotal : 0.5;
-            
-            outcomeOddsMap[outcome.id] = odds;
-            
-            console.log(`Outcome ${outcome.id} (${outcome.name}): ${tokens}/${totalTokens} = ${odds.toFixed(3)} odds`);
-          });
-        }
-
-        // Calculate current value of held positions by user
-        const positionValuesByUser: Record<string, number> = {};
-        
-        // For each user's positions, calculate current value using live odds
-        Object.entries(positionsByUser).forEach(([userId, userPositions]) => {
-          let totalPositionValue = 0;
-          
-          Object.entries(userPositions).forEach(([outcomeId, shares]) => {
-            if (shares > 0) { // Only count positive positions
-              const currentOdds = outcomeOddsMap[outcomeId];
-              if (currentOdds !== undefined) {
-                const positionValue = shares * currentOdds;
-                totalPositionValue += positionValue;
-                
-                const outcomeName = outcomeMap[outcomeId]?.name || outcomeId;
-                console.log(`User ${userId} holds ${shares} shares of ${outcomeName} worth ${positionValue.toFixed(3)} (odds: ${currentOdds.toFixed(3)})`);
-              }
-            }
-          });
-          
-          if (totalPositionValue > 0) {
-            positionValuesByUser[userId] = totalPositionValue;
-            console.log(`User ${userId} total position value: ${totalPositionValue.toFixed(3)}`);
-          }
-        });
-
+        // 4. Process data for each user
         const leaderboardResults: LeaderboardEntry[] = [];
-        
-        // For each user, calculate their total profit and percent PNL
+
         for (const profile of validProfiles) {
           try {
-            // Get trading PNL from predictions (target market only)
-            const tradingPNL = predictionsByUser[profile.user_id] || 0;
+            const userId = profile.user_id;
             
-            // Get user's total payouts (target market only)
-            const totalPayouts = payoutsByUser[profile.user_id] || 0;
+            // Get user's predictions
+            const userPredictions = (allPredictions || []).filter(p => p.user_id === userId) as Prediction[];
+            
+            if (userPredictions.length === 0) {
+              // Skip users with no predictions
+              continue;
+            }
 
-            // Get current value of held positions
-            const currentPositionValue = positionValuesByUser[profile.user_id] || 0;
+            // Calculate total amounts bought (sum of absolute trade values for buy transactions)
+            let totalBoughtAmount = 0;
+            let netTradePnL = 0;
+            
+            // Track shares by outcome
+            const sharesByOutcome: { [outcomeId: number]: number } = {};
 
-            // Calculate total profit (PNL + payouts + current position value)
-            const totalProfit = tradingPNL + totalPayouts + currentPositionValue;
+            // Process each prediction
+            userPredictions.forEach(prediction => {
+              const tradeValue = Number(prediction.trade_value || 0);
+              const sharesAmt = Number(prediction.shares_amt || 0);
+              const outcomeId = prediction.outcome_id;
+
+              // Add to net trade P&L (sum of all trade values)
+              netTradePnL += tradeValue;
+
+              if (prediction.trade_type === 'buy') {
+                // For buys, add the absolute trade value to total bought amount
+                totalBoughtAmount += Math.abs(tradeValue);
+                
+                // Add shares to position
+                sharesByOutcome[outcomeId] = (sharesByOutcome[outcomeId] || 0) + sharesAmt;
+              } else if (prediction.trade_type === 'sell') {
+                // For sells, subtract shares from position
+                sharesByOutcome[outcomeId] = (sharesByOutcome[outcomeId] || 0) - sharesAmt;
+              }
+            });
+
+            // Calculate current value of remaining shares
+            let remainingSharesValue = 0;
+
+            Object.entries(sharesByOutcome).forEach(([outcomeIdStr, shares]) => {
+              if (shares > 0) { // Only count positive positions
+                const outcomeId = parseInt(outcomeIdStr);
+                
+                // Find the outcome and its market
+                const outcome = (allOutcomes || []).find(o => o.id === outcomeId) as Outcome | undefined;
+                if (!outcome) return;
+
+                // Find all outcomes in the same market to calculate current odds
+                const marketOutcomes = (allOutcomes || []).filter(o => o.market_id === outcome.market_id) as Outcome[];
+                const totalMarketTokens = marketOutcomes.reduce((sum, o) => sum + Number(o.tokens), 0);
+                
+                if (totalMarketTokens > 0) {
+                  // Current odds = outcome_tokens / total_market_tokens
+                  const currentOdds = Number(outcome.tokens) / totalMarketTokens;
+                  
+                  // Value = shares * current_odds (this is what the shares would be worth if sold now)
+                  const shareValue = shares * currentOdds;
+                  remainingSharesValue += shareValue;
+                  
+                  console.log(`User ${userId}: ${shares} shares of outcome ${outcomeId} (${outcome.name}) worth ${shareValue.toFixed(3)} at ${(currentOdds * 100).toFixed(1)}% odds`);
+                }
+              }
+            });
+
+            // Calculate total profit/loss = net trade P&L + current value of remaining shares
+            const totalProfitLoss = netTradePnL + remainingSharesValue;
             
-            // Get user's balance (or default to 100 if not available)
-            const balance = profile.balance || 100;
-            
-            // Calculate percentage PNL based on the balance
+            // Calculate percentage P&L based on total amount bought
             // Avoid division by zero
-            const percentPNL = balance > 0 ? (totalProfit / balance) * 100 : 0;
+            const percentPnL = totalBoughtAmount > 0 ? (totalProfitLoss / totalBoughtAmount) * 100 : 0;
 
             leaderboardResults.push({
-              user_id: profile.user_id,
+              user_id: userId,
               username: profile.username,
               payment_id: profile.payment_id,
-              total_profit: totalProfit,
-              percent_pnl: percentPNL,
-              balance: balance
+              total_profit_loss: totalProfitLoss,
+              percent_pnl: percentPnL,
+              total_bought_amount: totalBoughtAmount,
+              remaining_shares_value: remainingSharesValue,
+              net_trade_pnl: netTradePnL
             });
+
+            console.log(`User ${userId}: Bought $${totalBoughtAmount.toFixed(2)}, Net Trade P&L: $${netTradePnL.toFixed(2)}, Remaining Shares Value: $${remainingSharesValue.toFixed(2)}, Total P&L: $${totalProfitLoss.toFixed(2)}, Percent: ${percentPnL.toFixed(2)}%`);
+
           } catch (userError) {
             console.warn(`Skipping user ${profile.user_id} due to error:`, userError);
           }
         }
 
-        // Filter users with no activity in the target market
+        // Filter users with activity (total bought amount > 0)
         const activeUsers = leaderboardResults.filter(
-          entry => entry.total_profit !== 0 || entry.percent_pnl !== 0
+          entry => entry.total_bought_amount > 0
         );
 
         // Sort by the selected metric
@@ -302,8 +203,8 @@ export default function Leaderboard() {
   // Sort the leaderboard data based on current sort parameters
   const sortLeaderboardData = (data: LeaderboardEntry[], sortMetric: "absolute" | "percent", direction: string) => {
     return [...data].sort((a, b) => {
-      const valueA = sortMetric === "absolute" ? a.total_profit : a.percent_pnl;
-      const valueB = sortMetric === "absolute" ? b.total_profit : b.percent_pnl;
+      const valueA = sortMetric === "absolute" ? a.total_profit_loss : a.percent_pnl;
+      const valueB = sortMetric === "absolute" ? b.total_profit_loss : b.percent_pnl;
       
       return direction === "desc" ? valueB - valueA : valueA - valueB;
     });
@@ -381,7 +282,7 @@ export default function Leaderboard() {
                   className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "absolute" ? "bg-gray-800" : ""}`}
                   onClick={() => handleSortClick("absolute")}
                 >
-                  Total Profit
+                  Total Profit/Loss
                   {sortBy === "absolute" && (
                     <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
                   )}
@@ -390,7 +291,7 @@ export default function Leaderboard() {
                   className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "percent" ? "bg-gray-800" : ""}`}
                   onClick={() => handleSortClick("percent")}
                 >
-                  Percent PNL
+                  Percent P&L
                   {sortBy === "percent" && (
                     <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
                   )}
@@ -416,12 +317,12 @@ export default function Leaderboard() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm ${player.total_profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {formatCurrency(player.total_profit)}
+                    <div className={`text-sm font-bold ${player.total_profit_loss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {formatCurrency(player.total_profit_loss)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm ${player.percent_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className={`text-sm font-bold ${player.percent_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {formatPercentage(player.percent_pnl)}
                     </div>
                   </td>
@@ -430,8 +331,8 @@ export default function Leaderboard() {
               
               {leaderboardData.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-400">
-                    No leaderboard data available for market 35
+                  <td colSpan={7} className="px-6 py-4 text-center text-gray-400">
+                    No leaderboard data available
                   </td>
                 </tr>
               )}
