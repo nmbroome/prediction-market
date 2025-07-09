@@ -12,29 +12,15 @@ interface LeaderboardEntry {
   total_bought_amount: number;
   remaining_shares_value: number;
   net_trade_pnl: number;
+  position: number;
 }
 
-interface Profile {
-  user_id: string;
-  username?: string;
-  payment_id?: string | null;
-}
-
-interface Prediction {
-  user_id: string;
-  market_id: number;
-  outcome_id: number;
-  shares_amt: number;
-  trade_value: number;
-  trade_type: 'buy' | 'sell';
+interface LeaderboardData {
+  id: string;
   created_at: string;
-}
-
-interface Outcome {
-  id: number;
-  name: string;
-  tokens: number;
-  market_id: number;
+  calculation_date: string;
+  data: LeaderboardEntry[];
+  total_users: number;
 }
 
 export default function Leaderboard() {
@@ -44,161 +30,45 @@ export default function Leaderboard() {
   const [sortBy, setSortBy] = useState<"absolute" | "percent">("absolute");
   const [sortDirection, setSortDirection] = useState("desc");
 
+  // Fetch the latest leaderboard data
   useEffect(() => {
-    const fetchAndCalculateLeaderboardData = async () => {
+    const fetchLatestLeaderboardData = async () => {
       try {
         setLoading(true);
-        
-        // 1. Get all users with their profiles
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("user_id, username, payment_id");
+        setError(null);
 
-        if (profilesError) throw new Error(`Failed to fetch user profiles: ${profilesError.message}`);
-        if (!profiles) throw new Error("No user profiles found");
+        // Get the most recent leaderboard
+        const { data, error } = await supabase
+          .from("leaderboards")
+          .select("*")
+          .order("calculation_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-        // Filter out any users with null or undefined user_id
-        const validProfiles = profiles.filter(profile => profile && profile.user_id) as Profile[];
-        
-        console.log(`Found ${validProfiles.length} valid profiles out of ${profiles.length} total`);
+        if (error) throw error;
 
-        // 2. Get all predictions from all markets (or filter by specific markets if needed)
-        const { data: allPredictions, error: predictionsError } = await supabase
-          .from("predictions")
-          .select("user_id, market_id, outcome_id, shares_amt, trade_value, trade_type, created_at")
-          .gt("market_id", 40); // Only include markets with ID > 40 (adjust as needed)
-
-        if (predictionsError) {
-          console.warn("Error fetching predictions:", predictionsError);
+        if (!data || data.length === 0) {
+          throw new Error("No leaderboard data found");
         }
 
-        // 3. Get all outcomes to calculate current market odds
-        const { data: allOutcomes, error: outcomesError } = await supabase
-          .from("outcomes")
-          .select("id, name, tokens, market_id")
-          .gt("market_id", 40); // Only include outcomes from markets with ID > 40
+        const leaderboard = data[0] as LeaderboardData;
 
-        if (outcomesError) {
-          console.warn("Error fetching outcomes:", outcomesError);
-        }
-
-        console.log(`Found ${allPredictions?.length || 0} predictions and ${allOutcomes?.length || 0} outcomes`);
-
-        // 4. Process data for each user
-        const leaderboardResults: LeaderboardEntry[] = [];
-
-        for (const profile of validProfiles) {
-          try {
-            const userId = profile.user_id;
-            
-            // Get user's predictions
-            const userPredictions = (allPredictions || []).filter(p => p.user_id === userId) as Prediction[];
-            
-            if (userPredictions.length === 0) {
-              // Skip users with no predictions
-              continue;
-            }
-
-            // Calculate total amounts bought (sum of absolute trade values for buy transactions)
-            let totalBoughtAmount = 0;
-            let netTradePnL = 0;
-            
-            // Track shares by outcome
-            const sharesByOutcome: { [outcomeId: number]: number } = {};
-
-            // Process each prediction
-            userPredictions.forEach(prediction => {
-              const tradeValue = Number(prediction.trade_value || 0);
-              const sharesAmt = Number(prediction.shares_amt || 0);
-              const outcomeId = prediction.outcome_id;
-
-              // Add to net trade P&L (sum of all trade values)
-              netTradePnL += tradeValue;
-
-              if (prediction.trade_type === 'buy') {
-                // For buys, add the absolute trade value to total bought amount
-                totalBoughtAmount += Math.abs(tradeValue);
-                
-                // Add shares to position
-                sharesByOutcome[outcomeId] = (sharesByOutcome[outcomeId] || 0) + sharesAmt;
-              } else if (prediction.trade_type === 'sell') {
-                // For sells, subtract shares from position
-                sharesByOutcome[outcomeId] = (sharesByOutcome[outcomeId] || 0) - sharesAmt;
-              }
-            });
-
-            // Calculate current value of remaining shares
-            let remainingSharesValue = 0;
-
-            Object.entries(sharesByOutcome).forEach(([outcomeIdStr, shares]) => {
-              if (shares > 0) { // Only count positive positions
-                const outcomeId = parseInt(outcomeIdStr);
-                
-                // Find the outcome and its market
-                const outcome = (allOutcomes || []).find(o => o.id === outcomeId) as Outcome | undefined;
-                if (!outcome) return;
-
-                // Find all outcomes in the same market to calculate current odds
-                const marketOutcomes = (allOutcomes || []).filter(o => o.market_id === outcome.market_id) as Outcome[];
-                const totalMarketTokens = marketOutcomes.reduce((sum, o) => sum + Number(o.tokens), 0);
-                
-                if (totalMarketTokens > 0) {
-                  // Current odds = outcome_tokens / total_market_tokens
-                  const currentOdds = Number(outcome.tokens) / totalMarketTokens;
-                  
-                  // Value = shares * current_odds (this is what the shares would be worth if sold now)
-                  const shareValue = shares * currentOdds;
-                  remainingSharesValue += shareValue;
-                  
-                  console.log(`User ${userId}: ${shares} shares of outcome ${outcomeId} (${outcome.name}) worth ${shareValue.toFixed(3)} at ${(currentOdds * 100).toFixed(1)}% odds`);
-                }
-              }
-            });
-
-            // Calculate total profit/loss = net trade P&L + current value of remaining shares
-            const totalProfitLoss = netTradePnL + remainingSharesValue;
-            
-            // Calculate percentage P&L based on total amount bought
-            // Avoid division by zero
-            const percentPnL = totalBoughtAmount > 0 ? (totalProfitLoss / totalBoughtAmount) * 100 : 0;
-
-            leaderboardResults.push({
-              user_id: userId,
-              username: profile.username,
-              payment_id: profile.payment_id,
-              total_profit_loss: totalProfitLoss,
-              percent_pnl: percentPnL,
-              total_bought_amount: totalBoughtAmount,
-              remaining_shares_value: remainingSharesValue,
-              net_trade_pnl: netTradePnL
-            });
-
-            console.log(`User ${userId}: Bought $${totalBoughtAmount.toFixed(2)}, Net Trade P&L: $${netTradePnL.toFixed(2)}, Remaining Shares Value: $${remainingSharesValue.toFixed(2)}, Total P&L: $${totalProfitLoss.toFixed(2)}, Percent: ${percentPnL.toFixed(2)}%`);
-
-          } catch (userError) {
-            console.warn(`Skipping user ${profile.user_id} due to error:`, userError);
-          }
-        }
-
-        // Filter users with activity (total bought amount > 0)
-        const activeUsers = leaderboardResults.filter(
-          entry => entry.total_bought_amount > 0
-        );
-
-        // Sort by the selected metric
-        const sortedData = sortLeaderboardData(activeUsers, sortBy, sortDirection);
-
+        // Sort the data based on current sort preferences
+        const sortedData = sortLeaderboardData(leaderboard.data, sortBy, sortDirection);
         setLeaderboardData(sortedData);
+
       } catch (err) {
-        console.error("Error calculating leaderboard data:", err);
+        console.error("Error fetching leaderboard data:", err);
         setError(err instanceof Error ? err.message : "Failed to load leaderboard data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAndCalculateLeaderboardData();
+    fetchLatestLeaderboardData();
   }, [sortBy, sortDirection]);
+
+  // Remove the manual calculation function since we don't need it
   
   // Sort the leaderboard data based on current sort parameters
   const sortLeaderboardData = (data: LeaderboardEntry[], sortMetric: "absolute" | "percent", direction: string) => {
@@ -212,16 +82,12 @@ export default function Leaderboard() {
 
   // Handle column header click
   const handleSortClick = (metric: "absolute" | "percent") => {
-    // If clicking the same column, toggle direction
     if (sortBy === metric) {
       const newDirection = sortDirection === "asc" ? "desc" : "asc";
       setSortDirection(newDirection);
-      setLeaderboardData(sortLeaderboardData(leaderboardData, metric, newDirection));
     } else {
-      // If clicking different column, switch to that column with desc order
       setSortBy(metric);
       setSortDirection("desc");
-      setLeaderboardData(sortLeaderboardData(leaderboardData, metric, "desc"));
     }
   };
 
@@ -304,11 +170,11 @@ export default function Leaderboard() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <span className="text-lg font-bold text-yellow-400 mr-2">
-                        #{index + 1}
+                        #{player.position || index + 1}
                       </span>
-                      {index === 0 && <span className="text-yellow-400">🏆</span>}
-                      {index === 1 && <span className="text-gray-300">🥈</span>}
-                      {index === 2 && <span className="text-orange-400">🥉</span>}
+                      {(player.position || index + 1) === 1 && <span className="text-yellow-400">🏆</span>}
+                      {(player.position || index + 1) === 2 && <span className="text-gray-300">🥈</span>}
+                      {(player.position || index + 1) === 3 && <span className="text-orange-400">🥉</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -332,7 +198,7 @@ export default function Leaderboard() {
               {leaderboardData.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-4 text-center text-gray-400">
-                    No leaderboard data available
+                    No leaderboard data available for the selected date
                   </td>
                 </tr>
               )}
