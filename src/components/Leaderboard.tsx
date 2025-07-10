@@ -13,6 +13,8 @@ interface LeaderboardEntry {
   remaining_shares_value: number;
   net_trade_pnl: number;
   position: number;
+  rank_change?: number; // New field for rank change
+  is_new?: boolean; // New field to indicate if user is new to leaderboard
 }
 
 interface LeaderboardData {
@@ -30,20 +32,20 @@ export default function Leaderboard() {
   const [sortBy, setSortBy] = useState<"absolute" | "percent">("absolute");
   const [sortDirection, setSortDirection] = useState("desc");
 
-  // Fetch the latest leaderboard data
+  // Fetch the latest leaderboard data and calculate rank changes
   useEffect(() => {
     const fetchLatestLeaderboardData = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Get the most recent leaderboard
+        // Get the two most recent leaderboards (today and yesterday)
         const { data, error } = await supabase
           .from("leaderboards")
           .select("*")
           .order("calculation_date", { ascending: false })
           .order("created_at", { ascending: false })
-          .limit(1);
+          .limit(2);
 
         if (error) throw error;
 
@@ -51,10 +53,37 @@ export default function Leaderboard() {
           throw new Error("No leaderboard data found");
         }
 
-        const leaderboard = data[0] as LeaderboardData;
+        const currentLeaderboard = data[0] as LeaderboardData;
+        const previousLeaderboard = data.length > 1 ? data[1] as LeaderboardData : null;
+
+        // Calculate rank changes
+        const currentData = currentLeaderboard.data;
+        const enhancedData = currentData.map(currentEntry => {
+          let rankChange = undefined;
+          let isNew = false;
+
+          if (previousLeaderboard) {
+            const previousEntry = previousLeaderboard.data.find(p => p.user_id === currentEntry.user_id);
+            
+            if (previousEntry) {
+              // User existed in previous leaderboard - calculate rank change
+              // Positive number means rank improved (moved up), negative means rank worsened (moved down)
+              rankChange = previousEntry.position - currentEntry.position;
+            } else {
+              // User is new to the leaderboard
+              isNew = true;
+            }
+          }
+
+          return {
+            ...currentEntry,
+            rank_change: rankChange,
+            is_new: isNew
+          };
+        });
 
         // Sort the data based on current sort preferences
-        const sortedData = sortLeaderboardData(leaderboard.data, sortBy, sortDirection);
+        const sortedData = sortLeaderboardData(enhancedData, sortBy, sortDirection);
         setLeaderboardData(sortedData);
 
       } catch (err) {
@@ -68,7 +97,40 @@ export default function Leaderboard() {
     fetchLatestLeaderboardData();
   }, [sortBy, sortDirection]);
 
-  // Remove the manual calculation function since we don't need it
+  // Function to render rank change indicator
+  const renderRankChange = (player: LeaderboardEntry) => {
+    if (player.is_new) {
+      return (
+        <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+          NEW
+        </span>
+      );
+    }
+
+    if (player.rank_change === undefined || player.rank_change === 0) {
+      return (
+        <span className="ml-2 text-gray-500 text-sm">
+          ━
+        </span>
+      );
+    }
+
+    if (player.rank_change > 0) {
+      // Rank improved (moved up)
+      return (
+        <span className="ml-2 text-green-400 text-sm flex items-center">
+          ↑{player.rank_change}
+        </span>
+      );
+    } else {
+      // Rank worsened (moved down)
+      return (
+        <span className="ml-2 text-red-400 text-sm flex items-center">
+          ↓{Math.abs(player.rank_change)}
+        </span>
+      );
+    }
+  };
   
   // Sort the leaderboard data based on current sort parameters
   const sortLeaderboardData = (data: LeaderboardEntry[], sortMetric: "absolute" | "percent", direction: string) => {
@@ -172,9 +234,10 @@ export default function Leaderboard() {
                       <span className="text-lg font-bold text-yellow-400 mr-2">
                         #{player.position || index + 1}
                       </span>
-                      {(player.position || index + 1) === 1 && <span className="text-yellow-400">🏆</span>}
-                      {(player.position || index + 1) === 2 && <span className="text-gray-300">🥈</span>}
-                      {(player.position || index + 1) === 3 && <span className="text-orange-400">🥉</span>}
+                      {renderRankChange(player)}
+                      {(player.position || index + 1) === 1 && <span className="text-yellow-400 ml-2">🏆</span>}
+                      {(player.position || index + 1) === 2 && <span className="text-gray-300 ml-2">🥈</span>}
+                      {(player.position || index + 1) === 3 && <span className="text-orange-400 ml-2">🥉</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
