@@ -56,19 +56,27 @@ export default function Leaderboard() {
         const currentLeaderboard = data[0] as LeaderboardData;
         const previousLeaderboard = data.length > 1 ? data[1] as LeaderboardData : null;
 
-        // Calculate rank changes
+        // Sort the current data based on current sort preferences
         const currentData = currentLeaderboard.data;
-        const enhancedData = currentData.map(currentEntry => {
+        const sortedCurrentData = sortLeaderboardData(currentData, sortBy, sortDirection);
+
+        // Sort the previous data using the same criteria for comparison
+        const sortedPreviousData = previousLeaderboard 
+          ? sortLeaderboardData(previousLeaderboard.data, sortBy, sortDirection)
+          : null;
+
+        // Calculate rank changes based on current sorting
+        const enhancedData = sortedCurrentData.map((currentEntry, currentIndex) => {
           let rankChange = undefined;
           let isNew = false;
 
-          if (previousLeaderboard) {
-            const previousEntry = previousLeaderboard.data.find(p => p.user_id === currentEntry.user_id);
+          if (sortedPreviousData) {
+            const previousIndex = sortedPreviousData.findIndex(p => p.user_id === currentEntry.user_id);
             
-            if (previousEntry) {
+            if (previousIndex !== -1) {
               // User existed in previous leaderboard - calculate rank change
               // Positive number means rank improved (moved up), negative means rank worsened (moved down)
-              rankChange = previousEntry.position - currentEntry.position;
+              rankChange = previousIndex - currentIndex;
             } else {
               // User is new to the leaderboard
               isNew = true;
@@ -82,9 +90,7 @@ export default function Leaderboard() {
           };
         });
 
-        // Sort the data based on current sort preferences
-        const sortedData = sortLeaderboardData(enhancedData, sortBy, sortDirection);
-        setLeaderboardData(sortedData);
+        setLeaderboardData(enhancedData);
 
       } catch (err) {
         console.error("Error fetching leaderboard data:", err);
@@ -232,12 +238,12 @@ export default function Leaderboard() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <span className="text-lg font-bold text-yellow-400 mr-2">
-                        #{player.position || index + 1}
+                        #{index + 1}
                       </span>
                       {renderRankChange(player)}
-                      {(player.position || index + 1) === 1 && <span className="text-yellow-400 ml-2">🏆</span>}
-                      {(player.position || index + 1) === 2 && <span className="text-gray-300 ml-2">🥈</span>}
-                      {(player.position || index + 1) === 3 && <span className="text-orange-400 ml-2">🥉</span>}
+                      {(index + 1) === 1 && <span className="text-yellow-400 ml-2">🏆</span>}
+                      {(index + 1) === 2 && <span className="text-gray-300 ml-2">🥈</span>}
+                      {(index + 1) === 3 && <span className="text-orange-400 ml-2">🥉</span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
