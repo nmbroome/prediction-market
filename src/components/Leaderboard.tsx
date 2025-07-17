@@ -29,7 +29,7 @@ export default function Leaderboard() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"absolute" | "percent">("absolute");
+  const [sortBy, setSortBy] = useState<"absolute" | "percent">("percent"); // Changed default to "percent"
   const [sortDirection, setSortDirection] = useState("desc");
 
   // Fetch the latest leaderboard data and calculate rank changes
