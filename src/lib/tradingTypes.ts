@@ -8,11 +8,12 @@ export interface Market {
   description: string;
   token_pool: number;
   market_maker: string;
-  status?: 'open' | 'closed' | 'resolved';
+  status?: 'open' | 'closed' | 'resolved' | 'annulled';
   close_date?: string;
   created_at?: string;
   creator_id?: string;
   tags?: string[];
+  outcome_id?: number | null; // The winning outcome ID for resolved markets
 }
 
 export interface Answer {
@@ -22,6 +23,16 @@ export interface Answer {
   market_id: number;
   created_at?: string;
   creator_id?: string;
+}
+
+export interface WinningOutcome {
+  id: number;
+  name: string;
+}
+
+export interface MarketWithResolution extends Market {
+  outcomes?: Answer[];
+  winning_outcome?: WinningOutcome | null;
 }
 
 export interface TradePreview {
@@ -182,4 +193,27 @@ export interface MarketOdds {
   shares_amt: number;
   trade_type: 'buy' | 'sell';
   outcome_name: string;
+}
+
+// Market card props with resolution support
+export interface MarketCardProps {
+  id: number;
+  name: string;
+  outcomes?: Array<{
+    id: number;
+    name: string;
+    tokens: number;
+  }>;
+  status?: 'open' | 'closed' | 'annulled';
+  outcome_id?: number | null;
+  winning_outcome?: WinningOutcome | null;
+}
+
+// Market resolution status helper types
+export type MarketResolutionStatus = 'open' | 'closed' | 'resolved' | 'annulled';
+
+export interface ResolvedMarket extends Market {
+  outcome_id: number;
+  winning_outcome: WinningOutcome;
+  status: 'closed';
 }

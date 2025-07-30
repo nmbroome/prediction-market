@@ -14,6 +14,7 @@ interface Market {
   market_maker: string;
   status?: string;
   close_date?: string;
+  outcome_id?: number | null;
 }
 
 interface Answer {
@@ -23,10 +24,16 @@ interface Answer {
   market_id: number;
 }
 
+interface WinningOutcome {
+  id: number;
+  name: string;
+}
+
 export default function MarketDetails() {
   const { id } = useParams();
   const [market, setMarket] = useState<Market | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [winningOutcome, setWinningOutcome] = useState<WinningOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [marketStatus, setMarketStatus] = useState<'open' | 'closed' | 'resolved'>('open');
 
@@ -50,6 +57,11 @@ export default function MarketDetails() {
     return 'open';
   };
 
+  // Check if market is resolved (closed with winning outcome)
+  const isResolved = (market: Market): boolean => {
+    return market.status === 'closed' && market.outcome_id !== null;
+  };
+
   // Fetch market data (both market details and outcomes).
   const fetchMarketData = useCallback(async () => {
     if (!id) return;
@@ -57,7 +69,7 @@ export default function MarketDetails() {
     try {
       const { data: marketData, error: marketError } = await supabase
         .from("markets")
-        .select("id, name, description, token_pool, market_maker, status, close_date")
+        .select("id, name, description, token_pool, market_maker, status, close_date, outcome_id")
         .eq("id", id)
         .single();
 
@@ -76,6 +88,23 @@ export default function MarketDetails() {
 
       if (answersError) throw new Error(answersError.message);
       setAnswers(answersData as Answer[]);
+
+      // If market is resolved, fetch the winning outcome details
+      if (isResolved(market) && market.outcome_id) {
+        const { data: winningData, error: winningError } = await supabase
+          .from("outcomes")
+          .select("id, name")
+          .eq("id", market.outcome_id)
+          .single();
+
+        if (winningError) {
+          console.error("Error fetching winning outcome:", winningError.message);
+        } else {
+          setWinningOutcome(winningData as WinningOutcome);
+        }
+      } else {
+        setWinningOutcome(null);
+      }
     } catch (e: unknown) {
       if (e instanceof Error) {
         setError(`Error fetching market data: ${e.message}`);
@@ -103,6 +132,14 @@ export default function MarketDetails() {
 
   // Get a display label for market status
   const getStatusLabel = () => {
+    if (isResolved(market) && winningOutcome) {
+      return (
+        <span className="bg-green-600 text-white px-3 py-1 rounded text-sm font-medium">
+          Resolved: {winningOutcome.name} Won
+        </span>
+      );
+    }
+
     switch (marketStatus) {
       case 'open':
         return <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">Open</span>;
@@ -119,13 +156,30 @@ export default function MarketDetails() {
     <div className="py-6 max-w-7xl mx-auto">
       {/* Market Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 mb-4">
           <h1 className="text-4xl font-bold text-white">{market.name}</h1>
           {getStatusLabel()}
         </div>
-        <p className="text-2xl mt-2 text-white">
-          <strong>{yesOdds} Chance</strong>
-        </p>
+        
+        {/* Market Resolution Display */}
+        {isResolved(market) && winningOutcome ? (
+          <div className="mb-4 p-4 bg-green-900/20 border border-green-700 rounded-lg">
+            <div className="text-center">
+              <div className="text-lg text-green-300 mb-2">🎉 Market Resolved 🎉</div>
+              <div className="text-2xl font-bold text-green-200">
+                {winningOutcome.name} Won
+              </div>
+              <div className="text-sm text-green-400 mt-1">
+                This market has been settled
+              </div>
+            </div>
+          </div>
+        ) : !isResolved(market) && marketStatus === 'open' ? (
+          <p className="text-2xl mt-2 text-white">
+            <strong>{yesOdds} Chance</strong>
+          </p>
+        ) : null}
+        
         <p className="text-xl mt-2 text-white">
           <strong>Description:</strong> {market.description}
         </p>
@@ -153,14 +207,29 @@ export default function MarketDetails() {
           ) : (
             <div className="p-6 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] text-center">
               <div>
-                <h3 className="text-xl text-white mb-2">
-                  {marketStatus === 'closed' ? 'This market is closed' : 'This market has been resolved'}
-                </h3>
-                <p className="text-gray-400">
-                  {marketStatus === 'closed' 
-                    ? 'Trading is no longer available for this market.' 
-                    : 'This market has been resolved. No further trading is possible.'}
-                </p>
+                {isResolved(market) && winningOutcome ? (
+                  <>
+                    <div className="text-green-400 text-4xl mb-4">🏆</div>
+                    <h3 className="text-xl text-white mb-2">Market Resolved</h3>
+                    <div className="text-lg font-bold text-green-400 mb-2">
+                      {winningOutcome.name} Won
+                    </div>
+                    <p className="text-gray-400">
+                      This market has been settled. Winners can claim their payouts.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-xl text-white mb-2">
+                      {marketStatus === 'closed' ? 'This market is closed' : 'This market has been resolved'}
+                    </h3>
+                    <p className="text-gray-400">
+                      {marketStatus === 'closed' 
+                        ? 'Trading is no longer available for this market.' 
+                        : 'This market has been resolved. No further trading is possible.'}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           )}

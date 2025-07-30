@@ -5,6 +5,11 @@ import { getMarkets } from "@/lib/getMarkets";
 import { MARKET_TAGS } from "@/lib/constants";
 import MarketCard from "@/components/MarketCard";
 
+interface WinningOutcome {
+  id: number;
+  name: string;
+}
+
 interface Market {
   id: number;
   name: string;
@@ -14,6 +19,13 @@ interface Market {
   tags: string[];
   status?: 'open' | 'closed' | 'annulled';
   close_date?: string;
+  outcome_id?: number | null;
+  outcomes?: Array<{
+    id: number;
+    name: string;
+    tokens: number;
+  }>;
+  winning_outcome?: WinningOutcome | null;
 }
 
 type MarketStatusFilter = 'all' | 'current' | 'previous';
@@ -116,7 +128,15 @@ export default function MarketsList() {
         {filteredMarkets?.length ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredMarkets.map((market) => (
-              <MarketCard key={market.id} {...market} />
+              <MarketCard 
+                key={market.id} 
+                id={market.id}
+                name={market.name}
+                outcomes={market.outcomes}
+                status={market.status}
+                outcome_id={market.outcome_id}
+                winning_outcome={market.winning_outcome}
+              />
             ))}
           </div>
         ) : markets === null ? (
