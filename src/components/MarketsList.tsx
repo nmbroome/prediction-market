@@ -1,3 +1,5 @@
+// src/components/MarketsList.tsx - Updated to handle pending status
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,7 +19,7 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[];
-  status?: 'open' | 'closed' | 'annulled';
+  status?: 'pending' | 'open' | 'closed' | 'annulled'; // Added 'pending'
   close_date?: string;
   outcome_id?: number | null;
   outcomes?: Array<{
@@ -40,6 +42,7 @@ export default function MarketsList() {
   }, []);
 
   // Function to determine if market is current (open) or previous (closed/annulled)
+  // IMPORTANT: Pending markets are filtered out at the API level, so they won't appear here
   const isCurrentMarket = (market: Market): boolean => {
     return market.status === 'open';
   };
@@ -54,6 +57,7 @@ export default function MarketsList() {
     : markets?.filter((m) => m.tags.includes(selectedTag));
 
   // Filter markets by status (current = open, previous = closed or annulled)
+  // Note: Pending markets are already excluded from the API response
   const filteredMarkets = statusFilter === "all"
     ? tagFilteredMarkets
     : tagFilteredMarkets?.filter((market) => {

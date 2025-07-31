@@ -1,3 +1,5 @@
+// src/lib/getMarkets.ts - Updated to exclude pending markets
+
 import supabase from "@/lib/supabase/createClient";
 
 interface Outcome {
@@ -18,11 +20,11 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[];
-  status?: 'open' | 'closed' | 'annulled';
+  status?: 'pending' | 'open' | 'closed' | 'annulled'; // Added 'pending'
   close_date?: string;
-  outcome_id?: number | null; // The winning outcome ID
+  outcome_id?: number | null;
   outcomes?: Outcome[];
-  winning_outcome?: WinningOutcome | null; // The winning outcome details
+  winning_outcome?: WinningOutcome | null;
 }
 
 export async function getMarkets(): Promise<Market[] | null> {
@@ -39,7 +41,9 @@ export async function getMarkets(): Promise<Market[] | null> {
       close_date,
       outcome_id,
       outcomes!market_id( id, name, tokens )
-    `);
+    `)
+    // CRITICAL: Filter out pending markets
+    .neq('status', 'pending');
 
   if (error) {
     console.error('Error fetching markets:', error.message);

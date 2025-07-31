@@ -1,3 +1,5 @@
+// src/components/MarketCard.tsx - Updated to handle pending status
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -34,7 +36,7 @@ interface MarketCardProps {
   id: number;
   name: string;
   outcomes?: Outcome[];
-  status?: 'open' | 'closed' | 'annulled';
+  status?: 'pending' | 'open' | 'closed' | 'annulled'; // Added 'pending'
   outcome_id?: number | null;
   winning_outcome?: WinningOutcome | null;
 }
@@ -189,6 +191,13 @@ export default function MarketCard({
           Annulled
         </div>
       );
+    } else if (status === 'pending') {
+      // This should never be reached due to early return, but included for completeness
+      return (
+        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
+          Pending
+        </div>
+      );
     }
     return null;
   };
@@ -204,6 +213,12 @@ export default function MarketCard({
 
   // Calculate total tokens for all outcomes
   const totalTokens = sortedOutcomes.reduce((sum, outcome) => sum + outcome.tokens, 0);
+
+  // IMPORTANT: Don't render pending markets
+  // This check is after all hooks to comply with Rules of Hooks
+  if (status === 'pending') {
+    return null;
+  }
 
   return (
     <Link href={`/markets/${id}`}>

@@ -1,3 +1,5 @@
+// src/app/markets/[id]/page.tsx - Updated to handle pending markets
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -35,15 +37,15 @@ export default function MarketDetails() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [winningOutcome, setWinningOutcome] = useState<WinningOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [marketStatus, setMarketStatus] = useState<'open' | 'closed' | 'resolved'>('open');
+  const [marketStatus, setMarketStatus] = useState<'pending' | 'open' | 'closed' | 'resolved'>('open');
 
   // Determine market status based on close_date or explicit status field
-  const determineMarketStatus = (market: Market): 'open' | 'closed' | 'resolved' => {
+  const determineMarketStatus = (market: Market): 'pending' | 'open' | 'closed' | 'resolved' => {
     // First check if the market has an explicit status field
     if (market.status) {
       const status = market.status.toLowerCase();
-      if (status === 'open' || status === 'closed' || status === 'resolved') {
-        return status as 'open' | 'closed' | 'resolved';
+      if (status === 'pending' || status === 'open' || status === 'closed' || status === 'resolved') {
+        return status as 'pending' | 'open' | 'closed' | 'resolved';
       }
     }
     
@@ -76,6 +78,13 @@ export default function MarketDetails() {
       if (marketError) throw new Error(marketError.message);
       
       const market = marketData as Market;
+      
+      // CRITICAL: Check if market is pending and deny access
+      if (market.status === 'pending') {
+        setError("This market is not yet available for public viewing.");
+        return;
+      }
+      
       setMarket(market);
       
       // Set market status
@@ -118,7 +127,31 @@ export default function MarketDetails() {
     fetchMarketData();
   }, [fetchMarketData]);
 
+  // Early return for pending markets or errors
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Access Denied</h1>
+          <p className="text-white">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!market) return <div className="flex justify-center items-center h-screen text-white">Loading...</div>;
+
+  // ADDITIONAL CHECK: Double-check pending status before rendering
+  if (market.status === 'pending') {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-yellow-500 mb-4">Market Pending</h1>
+          <p className="text-white">This market is not yet available for public viewing.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Calculate total tokens from all outcomes.
   const totalOutcomeTokens = answers.reduce((sum, answer) => sum + answer.tokens, 0);
@@ -141,6 +174,8 @@ export default function MarketDetails() {
     }
 
     switch (marketStatus) {
+      case 'pending':
+        return <span className="bg-yellow-600 text-white px-2 py-1 rounded text-sm">Pending</span>;
       case 'open':
         return <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">Open</span>;
       case 'closed':
@@ -216,6 +251,13 @@ export default function MarketDetails() {
                     </div>
                     <p className="text-gray-400">
                       This market has been settled. Winners can claim their payouts.
+                    </p>
+                  </>
+                ) : marketStatus === 'pending' ? (
+                  <>
+                    <h3 className="text-xl text-white mb-2">Market Pending</h3>
+                    <p className="text-gray-400">
+                      This market is not yet available for trading.
                     </p>
                   </>
                 ) : (
