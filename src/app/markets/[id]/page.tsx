@@ -1,4 +1,4 @@
-// src/app/markets/[id]/page.tsx - Updated to handle pending markets
+// src/app/markets/[id]/page.tsx - Updated to include data release link
 
 "use client";
 
@@ -17,6 +17,7 @@ interface Market {
   status?: string;
   close_date?: string;
   outcome_id?: number | null;
+  link?: string; // Added link field
 }
 
 interface Answer {
@@ -71,7 +72,7 @@ export default function MarketDetails() {
     try {
       const { data: marketData, error: marketError } = await supabase
         .from("markets")
-        .select("id, name, description, token_pool, market_maker, status, close_date, outcome_id")
+        .select("id, name, description, token_pool, market_maker, status, close_date, outcome_id, link")
         .eq("id", id)
         .single();
 
@@ -215,14 +216,46 @@ export default function MarketDetails() {
           </p>
         ) : null}
         
-        <p className="text-xl mt-2 text-white">
-          <strong>Description:</strong> {market.description}
-        </p>
-        {market.close_date && (
-          <p className="text-md mt-2 text-gray-300">
-            Closes: {new Date(market.close_date).toLocaleDateString()}
+        <div className="space-y-2">
+          <p className="text-xl text-white">
+            <strong>Description:</strong> {market.description}
           </p>
-        )}
+          
+          {/* Data Release Link */}
+          {market.link && (
+            <div className="flex items-center gap-2">
+              <span className="text-blue-400 font-medium">Data Release:</span>
+              <a
+                href={market.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 hover:text-blue-100 underline hover:no-underline transition-colors flex items-center gap-1"
+              >
+                View Data Release
+                <svg 
+                  className="w-4 h-4" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" 
+                  />
+                </svg>
+              </a>
+            </div>
+          )}
+          
+          {market.close_date && (
+            <p className="text-md text-gray-300">
+              Closes: {new Date(market.close_date).toLocaleDateString()}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Chart and Trading Form Side by Side */}
