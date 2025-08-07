@@ -41,20 +41,20 @@ export default function Navbar() {
       <div className="flex space-x-4">
         <Link
           href="/markets"
-          className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
         >
           Markets
         </Link>
         <Link
           href="/leaderboard"
-          className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+          className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
         >
           Leaderboard
         </Link>
         {user && (
           <Link
             href="/profile"
-            className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
+            className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
           >
             Profile
           </Link>
@@ -62,20 +62,12 @@ export default function Navbar() {
         {user ? (
           <LogoutButton />
         ) : (
-          <>
-            <Link
-              href="/signup"
-              className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
-            >
-              Sign Up
-            </Link>
-            <Link
-              href="/login"
-              className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600"
-            >
-              Log In
-            </Link>
-          </>
+          <Link
+            href="/auth"
+            className="px-4 py-2 bg-green-500 rounded-md hover:bg-green-600 transition-colors font-medium"
+          >
+            Sign In
+          </Link>
         )}
       </div>
     </nav>
