@@ -252,7 +252,7 @@ export default function MarketDetails() {
           
           {market.close_date && (
             <p className="text-md text-gray-300">
-              Closes: {new Date(market.close_date).toLocaleDateString()}
+              Closes: {new Date(market.close_date + 'T00:00:00').toLocaleDateString()}
             </p>
           )}
         </div>
