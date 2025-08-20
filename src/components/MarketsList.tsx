@@ -1,4 +1,4 @@
-// src/components/MarketsList.tsx - Updated to handle pending status
+// src/components/MarketsList.tsx - Updated to center market cards
 
 "use client";
 
@@ -19,7 +19,7 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[];
-  status?: 'pending' | 'open' | 'closed' | 'annulled'; // Added 'pending'
+  status?: 'pending' | 'open' | 'closed' | 'annulled';
   close_date?: string;
   outcome_id?: number | null;
   outcomes?: Array<{
@@ -42,7 +42,6 @@ export default function MarketsList() {
   }, []);
 
   // Function to determine if market is current (open) or previous (closed/annulled)
-  // IMPORTANT: Pending markets are filtered out at the API level, so they won't appear here
   const isCurrentMarket = (market: Market): boolean => {
     return market.status === 'open';
   };
@@ -57,7 +56,6 @@ export default function MarketsList() {
     : markets?.filter((m) => m.tags.includes(selectedTag));
 
   // Filter markets by status (current = open, previous = closed or annulled)
-  // Note: Pending markets are already excluded from the API response
   const filteredMarkets = statusFilter === "all"
     ? tagFilteredMarkets
     : tagFilteredMarkets?.filter((market) => {
@@ -128,33 +126,36 @@ export default function MarketsList() {
         </div>
       )}
 
-      <div className="p-8">
-        {filteredMarkets?.length ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredMarkets.map((market) => (
-              <MarketCard 
-                key={market.id} 
-                id={market.id}
-                name={market.name}
-                outcomes={market.outcomes}
-                status={market.status}
-                outcome_id={market.outcome_id}
-                winning_outcome={market.winning_outcome}
-              />
-            ))}
-          </div>
-        ) : markets === null ? (
-          <p className="text-center text-gray-600">Loading markets...</p>
-        ) : (
-          <div className="text-center">
-            <p className="text-gray-600 mb-2">No markets found</p>
-            {statusFilter !== "all" && (
-              <p className="text-gray-500 text-sm">
-                Try switching to {statusFilter === "current" ? "Previous" : "Current"} markets or selecting All Markets
-              </p>
-            )}
-          </div>
-        )}
+      {/* Markets Grid Container - UPDATED */}
+      <div className="flex justify-center w-full">
+        <div className="max-w-7xl w-full px-8">
+          {filteredMarkets?.length ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center">
+              {filteredMarkets.map((market) => (
+                <MarketCard 
+                  key={market.id} 
+                  id={market.id}
+                  name={market.name}
+                  outcomes={market.outcomes}
+                  status={market.status}
+                  outcome_id={market.outcome_id}
+                  winning_outcome={market.winning_outcome}
+                />
+              ))}
+            </div>
+          ) : markets === null ? (
+            <p className="text-center text-gray-600">Loading markets...</p>
+          ) : (
+            <div className="text-center">
+              <p className="text-gray-600 mb-2">No markets found</p>
+              {statusFilter !== "all" && (
+                <p className="text-gray-500 text-sm">
+                  Try switching to {statusFilter === "current" ? "Previous" : "Current"} markets or selecting All Markets
+                </p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
