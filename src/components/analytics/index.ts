@@ -6,3 +6,5 @@ export { default as PredictionVolumeChart } from './PredictionVolumeChart';
 export { default as MetricsCards } from './MetricsCards';
 export { default as MarketStats } from './MarketStats';
 export { default as MarketActivityCharts } from './MarketActivityCharts';
+export { default as UserStatistics } from './UserStatistics';
+export { default as UserActivityCharts } from './UserActivityCharts';
