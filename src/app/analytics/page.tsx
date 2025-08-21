@@ -3,7 +3,6 @@
 
 import { useEffect, useState } from "react";
 import supabase from "@/lib/supabase/createClient";
-import Navbar from "@/components/navbar";
 import {
   ActiveUsersChart,
   UserGrowthChart,
@@ -59,7 +58,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("monthly");
-  const [debugMode, setDebugMode] = useState<boolean>(false);
+
 
   useEffect(() => {
     fetchAnalyticsData();
@@ -76,14 +75,7 @@ export default function AnalyticsPage() {
 
     const daysBack = ranges[timeFilter];
     const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
-    
-    if (debugMode) {
-      console.log('=== DATE RANGE DEBUG ===');
-      console.log('Time filter:', timeFilter);
-      console.log('Days back:', daysBack);
-      console.log('Start date:', startDate.toISOString());
-      console.log('End date:', now.toISOString());
-    }
+
     
     return { startDate, endDate: now };
   };
@@ -117,24 +109,7 @@ export default function AnalyticsPage() {
       const totalPredictions = predictionsData?.length || 0;
       const totalTradeVolume = predictionsData?.reduce((sum, p) => sum + Math.abs(p.trade_value || 0), 0) || 0;
 
-      if (debugMode) {
-        console.log('=== FETCHED DATA DEBUG ===');
-        console.log('Total users:', totalUsers);
-        console.log('Total predictions in range:', totalPredictions);
-        console.log('Total trade volume:', totalTradeVolume);
-        console.log('Sample predictions:', predictionsData?.slice(0, 3));
-        
-        if (predictionsData && predictionsData.length > 0) {
-          const dates = predictionsData.map(p => new Date(p.created_at));
-          console.log('Prediction date range:', {
-            earliest: new Date(Math.min(...dates.map(d => d.getTime()))).toISOString(),
-            latest: new Date(Math.max(...dates.map(d => d.getTime()))).toISOString()
-          });
-          
-          const uniqueUsers = [...new Set(predictionsData.map(p => p.user_id))];
-          console.log('Unique users in predictions:', uniqueUsers.length, uniqueUsers.slice(0, 3));
-        }
-      }
+
 
       // Generate time series data
       const activeUsersData = generateActiveUsersData(predictionsData || [], startDate, endDate);
@@ -160,13 +135,6 @@ export default function AnalyticsPage() {
   };
 
   const generateActiveUsersData = (predictions: Prediction[], startDate: Date, endDate: Date): ActiveUsersData[] => {
-    if (debugMode) {
-      console.log('=== ACTIVE USERS GENERATION DEBUG ===');
-      console.log('Input predictions:', predictions.length);
-      console.log('Date range:', startDate.toISOString(), 'to', endDate.toISOString());
-      console.log('Time filter:', timeFilter);
-    }
-
     const data: ActiveUsersData[] = [];
     const cumulativeActiveUsers = new Set<string>();
 
@@ -179,29 +147,12 @@ export default function AnalyticsPage() {
         const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
         const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
 
-        if (debugMode) {
-          console.log('Processing month:', {
-            monthStart: monthStart.toISOString(),
-            monthEnd: monthEnd.toISOString(),
-            isCurrentMonth: monthStart.getMonth() === new Date().getMonth() && 
-                            monthStart.getFullYear() === new Date().getFullYear()
-          });
-        }
-
         const monthPredictions = predictions.filter(p => {
           const predDate = new Date(p.created_at);
           return predDate >= monthStart && predDate <= monthEnd;
         });
 
         const activeUsersInMonth = new Set(monthPredictions.map(p => p.user_id));
-        
-        if (debugMode) {
-          console.log('Month results:', {
-            predictionsCount: monthPredictions.length,
-            activeUsers: activeUsersInMonth.size,
-            userIds: [...activeUsersInMonth].slice(0, 3)
-          });
-        }
 
         // Add to cumulative set
         activeUsersInMonth.forEach(userId => cumulativeActiveUsers.add(userId));
@@ -258,12 +209,7 @@ export default function AnalyticsPage() {
       }
     }
 
-    if (debugMode) {
-      console.log('=== FINAL ACTIVE USERS DATA ===');
-      console.log('Generated data points:', data.length);
-      console.log('Sample data:', data.slice(-3)); // Last 3 entries
-      console.log('Total cumulative users:', cumulativeActiveUsers.size);
-    }
+
 
     return data;
   };
@@ -380,8 +326,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white">
-        <Navbar />
+      <div className="min-h-screen bg-transparent text-white">
         <div className="container mx-auto p-6">
           <div className="flex justify-center items-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -394,8 +339,7 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-black text-white">
-        <Navbar />
+      <div className="min-h-screen bg-transparent text-white">
         <div className="container mx-auto p-6">
           <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
             <p className="text-red-400">Error: {error}</p>
@@ -407,8 +351,7 @@ export default function AnalyticsPage() {
 
   if (!analyticsData) {
     return (
-      <div className="min-h-screen bg-black text-white">
-        <Navbar />
+      <div className="min-h-screen bg-transparent text-white">
         <div className="container mx-auto p-6">
           <p className="text-center text-gray-400">No analytics data available</p>
         </div>
@@ -417,30 +360,14 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <Navbar />
+          <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto p-6">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
           <p className="text-gray-400">Prophet prediction market platform statistics</p>
         </div>
 
-        {/* Debug Toggle */}
-        <div className="mb-6">
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className={`px-3 py-1 rounded text-sm ${
-              debugMode ? "bg-yellow-600 text-white" : "bg-gray-600 text-gray-300"
-            }`}
-          >
-            {debugMode ? "Disable Debug" : "Enable Debug"}
-          </button>
-          {debugMode && (
-            <p className="text-yellow-400 text-sm mt-1">
-              Debug mode enabled - check browser console for detailed logs
-            </p>
-          )}
-        </div>
+
 
         {/* Time Filter Selector */}
         <div className="mb-6">
@@ -482,7 +409,6 @@ export default function AnalyticsPage() {
           data={analyticsData.activeUsersData}
           timeFilter={timeFilter}
           loading={false}
-          debugMode={debugMode}
         />
 
         {/* Additional Charts Row */}

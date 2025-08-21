@@ -51,6 +51,12 @@ export default function Navbar() {
         >
           Leaderboard
         </Link>
+        <Link
+          href="/analytics"
+          className="px-4 py-2 bg-blue-500 rounded-md hover:bg-blue-600 transition-colors"
+        >
+          Analytics
+        </Link>
         {user && (
           <Link
             href="/profile"
