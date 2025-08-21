@@ -3,17 +3,8 @@
 
 import { useEffect, useState } from "react";
 import supabase from "@/lib/supabase/createClient";
-import {
-  ActiveUsersChart,
-  UserGrowthChart,
-  PredictionVolumeChart,
-  MetricsCards
-} from "@/components/analytics";
-
-interface User {
-  id: string;
-  created_at: string;
-}
+import MarketStats from "@/components/analytics/MarketStats";
+import MarketActivityCharts from "@/components/analytics/MarketActivityCharts";
 
 interface Prediction {
   user_id: string;
@@ -24,105 +15,101 @@ interface Prediction {
   created_at: string;
 }
 
-interface ActiveUsersData {
-  date: string;
-  active_users: number;
-  cumulative_users: number;
+interface Market {
+  id: number;
+  name: string;
+  status: string;
+  created_at: string;
+  token_pool: number;
 }
 
-interface UserGrowthData {
-  date: string;
-  new_users: number;
-  cumulative_users: number;
+interface MarketStatsData {
+  allTime: {
+    markets: number;
+    predictions: number;
+    tradeVolume: number;
+  };
+  open: {
+    markets: number;
+    predictions: number;
+    tradeVolume: number;
+  };
 }
 
-interface PredictionVolumeData {
+interface MarketActivityData {
   date: string;
-  prediction_count: number;
-  total_volume: number;
+  predictions: number;
+  markets_created: number;
+  volume: number;
 }
 
 interface AnalyticsData {
-  totalUsers: number;
-  totalPredictions: number;
-  totalTradeVolume: number;
-  activeUsersData: ActiveUsersData[];
-  userGrowthData: UserGrowthData[];
-  predictionVolumeData: PredictionVolumeData[];
+  marketStats: MarketStatsData;
+  marketActivityData: MarketActivityData[];
 }
-
-type TimeFilter = "daily" | "weekly" | "monthly" | "all";
 
 export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("monthly");
-
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, [timeFilter]);
-
-  const getDateRange = () => {
-    const now = new Date();
-    const ranges = {
-      daily: 30, // Last 30 days
-      weekly: 84, // Last 12 weeks (84 days)
-      monthly: 365, // Last 12 months (365 days)
-      all: 730 // Last 2 years or all data
-    };
-
-    const daysBack = ranges[timeFilter];
-    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
-
-    
-    return { startDate, endDate: now };
-  };
+  }, []);
 
   const fetchAnalyticsData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const { startDate, endDate } = getDateRange();
+      // Fetch all markets (excluding pending markets)
+      const { data: marketsData, error: marketsError } = await supabase
+        .from("markets")
+        .select("id, name, status, created_at, token_pool")
+        .neq("status", "pending");
 
-      // Fetch all users (for total count)
-      const { data: allUsersData, error: allUsersError } = await supabase
-        .from("profiles")
-        .select("id, created_at");
+      if (marketsError) throw new Error(`Failed to fetch markets: ${marketsError.message}`);
 
-      if (allUsersError) throw new Error(`Failed to fetch users: ${allUsersError.message}`);
+      const markets = marketsData as Market[];
+      const totalMarkets = markets.length;
+      const openMarkets = markets.filter(m => m.status === 'open');
+      const openMarketsCount = openMarkets.length;
 
-      const totalUsers = allUsersData?.length || 0;
-
-      // Fetch predictions within date range
-      const { data: predictionsData, error: predictionsError } = await supabase
+      // Fetch ALL predictions for market stats calculations
+      const { data: allPredictionsData, error: allPredictionsError } = await supabase
         .from("predictions")
-        .select("user_id, market_id, outcome_id, shares_amt, trade_value, created_at")
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString())
-        .order("created_at", { ascending: true });
+        .select("user_id, market_id, outcome_id, shares_amt, trade_value, created_at");
 
-      if (predictionsError) throw new Error(`Failed to fetch predictions: ${predictionsError.message}`);
+      if (allPredictionsError) throw new Error(`Failed to fetch all predictions: ${allPredictionsError.message}`);
 
-      const totalPredictions = predictionsData?.length || 0;
-      const totalTradeVolume = predictionsData?.reduce((sum, p) => sum + Math.abs(p.trade_value || 0), 0) || 0;
+      // Calculate market stats
+      const allTimePredictions = allPredictionsData || [];
+      const allTimeTradeVolume = allTimePredictions.reduce((sum, p) => sum + Math.abs(p.trade_value || 0), 0);
 
+      // Filter predictions for open markets only
+      const openMarketIds = new Set(openMarkets.map(m => m.id));
+      const openMarketPredictions = allTimePredictions.filter(p => openMarketIds.has(p.market_id));
+      const openMarketTradeVolume = openMarketPredictions.reduce((sum, p) => sum + Math.abs(p.trade_value || 0), 0);
 
+      const marketStats: MarketStatsData = {
+        allTime: {
+          markets: totalMarkets,
+          predictions: allTimePredictions.length,
+          tradeVolume: allTimeTradeVolume
+        },
+        open: {
+          markets: openMarketsCount,
+          predictions: openMarketPredictions.length,
+          tradeVolume: openMarketTradeVolume
+        }
+      };
 
-      // Generate time series data
-      const activeUsersData = generateActiveUsersData(predictionsData || [], startDate, endDate);
-      const userGrowthData = generateUserGrowthData(allUsersData || [], startDate, endDate);
-      const predictionVolumeData = generateVolumeData(predictionsData || [], startDate, endDate);
+      // Generate market activity data for charts
+      const marketActivityData = generateMarketActivityData(allTimePredictions, markets);
 
       const analytics: AnalyticsData = {
-        totalUsers,
-        totalPredictions,
-        totalTradeVolume,
-        activeUsersData,
-        userGrowthData,
-        predictionVolumeData
+        marketStats,
+        marketActivityData
       };
 
       setAnalyticsData(analytics);
@@ -134,194 +121,48 @@ export default function AnalyticsPage() {
     }
   };
 
-  const generateActiveUsersData = (predictions: Prediction[], startDate: Date, endDate: Date): ActiveUsersData[] => {
-    const data: ActiveUsersData[] = [];
-    const cumulativeActiveUsers = new Set<string>();
-
-    if (timeFilter === "monthly") {
-      // Use calendar months for monthly view
-      const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-      const end = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 0);
-
-      while (current <= end) {
-        const monthStart = new Date(current.getFullYear(), current.getMonth(), 1);
-        const monthEnd = new Date(current.getFullYear(), current.getMonth() + 1, 0, 23, 59, 59, 999);
-
-        const monthPredictions = predictions.filter(p => {
-          const predDate = new Date(p.created_at);
-          return predDate >= monthStart && predDate <= monthEnd;
-        });
-
-        const activeUsersInMonth = new Set(monthPredictions.map(p => p.user_id));
-
-        // Add to cumulative set
-        activeUsersInMonth.forEach(userId => cumulativeActiveUsers.add(userId));
-
-        data.push({
-          date: formatDateForDisplay(monthStart),
-          active_users: activeUsersInMonth.size,
-          cumulative_users: cumulativeActiveUsers.size
-        });
-
-        // Move to next month
-        current.setMonth(current.getMonth() + 1);
-      }
-    } else {
-      // Original logic for other time filters
-      const current = new Date(startDate);
-
-      while (current <= endDate) {
-        const periodEnd = new Date(current);
-        
-        // Set the end of the current period
-        if (timeFilter === "daily") {
-          periodEnd.setDate(current.getDate() + 1);
-        } else if (timeFilter === "weekly") {
-          periodEnd.setDate(current.getDate() + 7);
-        } else {
-          periodEnd.setDate(current.getDate() + 30); // All time grouped by month
-        }
-
-        const periodPredictions = predictions.filter(p => {
-          const predDate = new Date(p.created_at);
-          return predDate >= current && predDate < periodEnd;
-        });
-
-        const activeUsersInPeriod = new Set(periodPredictions.map(p => p.user_id));
-        
-        // Add to cumulative set
-        activeUsersInPeriod.forEach(userId => cumulativeActiveUsers.add(userId));
-
-        data.push({
-          date: formatDateForDisplay(current),
-          active_users: activeUsersInPeriod.size,
-          cumulative_users: cumulativeActiveUsers.size
-        });
-
-        // Move to next period
-        if (timeFilter === "daily") {
-          current.setDate(current.getDate() + 1);
-        } else if (timeFilter === "weekly") {
-          current.setDate(current.getDate() + 7);
-        } else {
-          current.setDate(current.getDate() + 30);
-        }
-      }
-    }
-
-
-
-    return data;
-  };
-
-  const generateUserGrowthData = (users: User[], startDate: Date, endDate: Date): UserGrowthData[] => {
-    const data: UserGrowthData[] = [];
+  const generateMarketActivityData = (predictions: Prediction[], markets: Market[]): MarketActivityData[] => {
+    const data: MarketActivityData[] = [];
+    
+    // Get date range for comprehensive data (last 2 years to cover all scenarios)
+    const now = new Date();
+    const startDate = new Date(now.getFullYear() - 2, 0, 1); // Start from 2 years ago
+    
+    // Generate daily data points
     const current = new Date(startDate);
-    let cumulativeUsers = 0;
+    
+    while (current <= now) {
+      const dayStart = new Date(current);
+      const dayEnd = new Date(current.getFullYear(), current.getMonth(), current.getDate(), 23, 59, 59, 999);
 
-    // Count users that existed before our date range
-    const usersBeforeRange = users.filter(user => 
-      new Date(user.created_at) < startDate
-    ).length;
-    cumulativeUsers = usersBeforeRange;
-
-    while (current <= endDate) {
-      const periodEnd = new Date(current);
-      
-      if (timeFilter === "daily") {
-        periodEnd.setDate(current.getDate() + 1);
-      } else if (timeFilter === "weekly") {
-        periodEnd.setDate(current.getDate() + 7);
-      } else if (timeFilter === "monthly") {
-        periodEnd.setMonth(current.getMonth() + 1);
-      } else {
-        periodEnd.setDate(current.getDate() + 30);
-      }
-
-      const newUsers = users.filter(user => {
-        const userDate = new Date(user.created_at);
-        return userDate >= current && userDate < periodEnd;
-      }).length;
-
-      cumulativeUsers += newUsers;
-
-      data.push({
-        date: formatDateForDisplay(current),
-        new_users: newUsers,
-        cumulative_users: cumulativeUsers
-      });
-
-      // Move to next period
-      if (timeFilter === "daily") {
-        current.setDate(current.getDate() + 1);
-      } else if (timeFilter === "weekly") {
-        current.setDate(current.getDate() + 7);
-      } else if (timeFilter === "monthly") {
-        current.setMonth(current.getMonth() + 1);
-      } else {
-        current.setDate(current.getDate() + 30);
-      }
-    }
-
-    return data;
-  };
-
-  const generateVolumeData = (predictions: Prediction[], startDate: Date, endDate: Date): PredictionVolumeData[] => {
-    const data: PredictionVolumeData[] = [];
-    const current = new Date(startDate);
-
-    while (current <= endDate) {
-      const periodEnd = new Date(current);
-      
-      if (timeFilter === "daily") {
-        periodEnd.setDate(current.getDate() + 1);
-      } else if (timeFilter === "weekly") {
-        periodEnd.setDate(current.getDate() + 7);
-      } else if (timeFilter === "monthly") {
-        periodEnd.setMonth(current.getMonth() + 1);
-      } else {
-        periodEnd.setDate(current.getDate() + 30);
-      }
-
-      const periodPredictions = predictions.filter(p => {
+      // Filter predictions for this day
+      const dayPredictions = predictions.filter(p => {
         const predDate = new Date(p.created_at);
-        return predDate >= current && predDate < periodEnd;
+        return predDate >= dayStart && predDate <= dayEnd;
       });
 
-      const predictionCount = periodPredictions.length;
-      const totalVolume = periodPredictions.reduce((sum, p) => sum + Math.abs(p.trade_value || 0), 0);
+      // Filter markets created on this day
+      const marketsCreated = markets.filter(m => {
+        const marketDate = new Date(m.created_at);
+        return marketDate >= dayStart && marketDate <= dayEnd;
+      });
+
+      const predictionCount = dayPredictions.length;
+      const totalVolume = dayPredictions.reduce((sum, p) => sum + Math.abs(p.trade_value || 0), 0);
+      const marketsCreatedCount = marketsCreated.length;
 
       data.push({
-        date: formatDateForDisplay(current),
-        prediction_count: predictionCount,
-        total_volume: totalVolume
+        date: current.toISOString().split('T')[0], // YYYY-MM-DD format for daily data
+        predictions: predictionCount,
+        markets_created: marketsCreatedCount,
+        volume: totalVolume
       });
 
-      // Move to next period
-      if (timeFilter === "daily") {
-        current.setDate(current.getDate() + 1);
-      } else if (timeFilter === "weekly") {
-        current.setDate(current.getDate() + 7);
-      } else if (timeFilter === "monthly") {
-        current.setMonth(current.getMonth() + 1);
-      } else {
-        current.setDate(current.getDate() + 30);
-      }
+      // Move to next day
+      current.setDate(current.getDate() + 1);
     }
 
     return data;
-  };
-
-  const formatDateForDisplay = (date: Date) => {
-    if (timeFilter === "daily") {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    } else if (timeFilter === "weekly") {
-      return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-    } else if (timeFilter === "monthly") {
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-    } else {
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-    }
   };
 
   if (loading) {
@@ -360,75 +201,28 @@ export default function AnalyticsPage() {
   }
 
   return (
-          <div className="min-h-screen bg-transparent text-white">
+    <div className="min-h-screen bg-transparent text-white">
       <div className="container mx-auto p-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Analytics Dashboard</h1>
-          <p className="text-gray-400">Prophet prediction market platform statistics</p>
+          <h1 className="text-3xl font-bold mb-2">Market Analytics</h1>
+          <p className="text-gray-400">Prophet prediction market statistics and trends</p>
         </div>
 
-
-
-        {/* Time Filter Selector */}
-        <div className="mb-6">
-          <div className="flex gap-2">
-            {[
-              { key: "daily" as const, label: "Daily" },
-              { key: "weekly" as const, label: "Weekly" },
-              { key: "monthly" as const, label: "Monthly" },
-              { key: "all" as const, label: "All Time" }
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setTimeFilter(key)}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  timeFilter === key
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Key Metrics Cards */}
-        <MetricsCards 
-          data={{
-            totalUsers: analyticsData.totalUsers,
-            totalPredictions: analyticsData.totalPredictions,
-            totalTradeVolume: analyticsData.totalTradeVolume
-          }}
-          timeFilter={timeFilter}
+        {/* Market Statistics Section */}
+        <MarketStats
+          data={analyticsData.marketStats}
           loading={false}
         />
 
-        {/* Active Users Chart */}
-        <ActiveUsersChart
-          data={analyticsData.activeUsersData}
-          timeFilter={timeFilter}
+        {/* Market Activity Charts */}
+        <MarketActivityCharts
+          data={analyticsData.marketActivityData}
           loading={false}
         />
-
-        {/* Additional Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <UserGrowthChart
-            data={analyticsData.userGrowthData}
-            timeFilter={timeFilter}
-            loading={false}
-          />
-
-          <PredictionVolumeChart
-            data={analyticsData.predictionVolumeData}
-            timeFilter={timeFilter}
-            loading={false}
-          />
-        </div>
 
         {/* Footer */}
         <div className="mt-8 text-center text-gray-400 text-sm">
-          <p>Analytics data updated in real-time. Time range: {timeFilter}</p>
+          <p>Market analytics updated in real-time</p>
         </div>
       </div>
     </div>
