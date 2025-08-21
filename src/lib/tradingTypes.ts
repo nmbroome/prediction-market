@@ -8,7 +8,7 @@ export interface Market {
   description: string;
   token_pool: number;
   market_maker: string;
-  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Added 'pending'
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
   close_date?: string;
   created_at?: string;
   creator_id?: string;
@@ -204,16 +204,15 @@ export interface MarketCardProps {
     name: string;
     tokens: number;
   }>;
-  status?: 'pending' | 'open' | 'closed' | 'annulled';
-  outcome_id?: number | null;
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
   winning_outcome?: WinningOutcome | null;
 }
 
 // Market resolution status helper types
-export type MarketResolutionStatus = 'pending' | 'open' | 'closed' | 'resolved' | 'annulled';
+export type MarketResolutionStatus = 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
 
 export interface ResolvedMarket extends Market {
   outcome_id: number;
   winning_outcome: WinningOutcome;
-  status: 'closed';
+  status: 'resolved'; // Updated from 'closed' to 'resolved'
 }

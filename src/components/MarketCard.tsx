@@ -1,4 +1,4 @@
-// src/components/MarketCard.tsx - Updated to handle pending status
+// src/components/MarketCard.tsx - Updated to use 'resolved' status
 
 "use client";
 
@@ -36,8 +36,7 @@ interface MarketCardProps {
   id: number;
   name: string;
   outcomes?: Outcome[];
-  status?: 'pending' | 'open' | 'closed' | 'annulled'; // Added 'pending'
-  outcome_id?: number | null;
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
   winning_outcome?: WinningOutcome | null;
 }
 
@@ -46,7 +45,6 @@ export default function MarketCard({
   name,
   outcomes = [],
   status = 'open',
-  outcome_id = null,
   winning_outcome = null
 }: MarketCardProps) {
   const [marketVolume, setMarketVolume] = useState<number | null>(null);
@@ -54,8 +52,8 @@ export default function MarketCard({
   const [priceChange, setPriceChange] = useState<PriceChangeData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Determine if the market is resolved
-  const isResolved = status === 'closed' && outcome_id !== null;
+  // Determine if the market is resolved (now uses 'resolved' status)
+  const isResolved = status === 'resolved';
   const isOpen = status === 'open';
 
   // Calculate the current price (YES outcome probability)

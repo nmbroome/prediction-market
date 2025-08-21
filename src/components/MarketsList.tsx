@@ -1,4 +1,4 @@
-// src/components/MarketsList.tsx - Updated to center market cards
+// src/components/MarketsList.tsx - Updated to use 'resolved' status
 
 "use client";
 
@@ -19,7 +19,7 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[];
-  status?: 'pending' | 'open' | 'closed' | 'annulled';
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
   close_date?: string;
   outcome_id?: number | null;
   outcomes?: Array<{
@@ -41,13 +41,14 @@ export default function MarketsList() {
     getMarkets().then(setMarkets);
   }, []);
 
-  // Function to determine if market is current (open) or previous (closed/annulled)
+  // Function to determine if market is current (open) or previous (closed/resolved/annulled)
+  // IMPORTANT: Pending markets are filtered out at the API level, so they won't appear here
   const isCurrentMarket = (market: Market): boolean => {
     return market.status === 'open';
   };
 
   const isPreviousMarket = (market: Market): boolean => {
-    return market.status === 'closed' || market.status === 'annulled';
+    return market.status === 'closed' || market.status === 'resolved' || market.status === 'annulled';
   };
 
   // Filter markets by tag
@@ -55,7 +56,8 @@ export default function MarketsList() {
     ? markets
     : markets?.filter((m) => m.tags.includes(selectedTag));
 
-  // Filter markets by status (current = open, previous = closed or annulled)
+  // Filter markets by status (current = open, previous = closed/resolved/annulled)
+  // Note: Pending markets are already excluded from the API response
   const filteredMarkets = statusFilter === "all"
     ? tagFilteredMarkets
     : tagFilteredMarkets?.filter((market) => {
@@ -126,7 +128,7 @@ export default function MarketsList() {
         </div>
       )}
 
-      {/* Markets Grid Container - UPDATED */}
+      {/* Markets Grid Container - Centered */}
       <div className="flex justify-center w-full">
         <div className="max-w-7xl w-full px-8">
           {filteredMarkets?.length ? (
@@ -138,7 +140,6 @@ export default function MarketsList() {
                   name={market.name}
                   outcomes={market.outcomes}
                   status={market.status}
-                  outcome_id={market.outcome_id}
                   winning_outcome={market.winning_outcome}
                 />
               ))}

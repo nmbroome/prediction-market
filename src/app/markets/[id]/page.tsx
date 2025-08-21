@@ -1,4 +1,4 @@
-// src/app/markets/[id]/page.tsx - Updated to include data release link
+// src/app/markets/[id]/page.tsx - Updated to use 'resolved' status
 
 "use client";
 
@@ -17,7 +17,7 @@ interface Market {
   status?: string;
   close_date?: string;
   outcome_id?: number | null;
-  link?: string; // Added link field
+  link?: string;
 }
 
 interface Answer {
@@ -51,7 +51,7 @@ export default function MarketDetails() {
     }
     
     // If no explicit status or invalid status, determine based on close date
-    const closeDate = market.close_date ? new Date(market.close_date) : null;
+    const closeDate = market.close_date ? new Date(market.close_date + 'T00:00:00') : null;
     const now = new Date();
     
     if (!closeDate) return 'open'; // No close date means market is open
@@ -60,9 +60,9 @@ export default function MarketDetails() {
     return 'open';
   };
 
-  // Check if market is resolved (closed with winning outcome)
+  // Check if market is resolved (has 'resolved' status)
   const isResolved = (market: Market): boolean => {
-    return market.status === 'closed' && market.outcome_id !== null;
+    return market.status === 'resolved';
   };
 
   // Fetch market data (both market details and outcomes).

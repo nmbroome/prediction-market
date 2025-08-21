@@ -1,3 +1,5 @@
+// src/components/GroupedTradeHistory.tsx - Updated to use 'resolved' status
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -69,7 +71,7 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
     }).format(value);
   };
 
-  // Determine market status
+  // Determine market status - Updated to use 'resolved' status
   const getMarketStatus = (prediction: Prediction): 'open' | 'closed' | 'resolved' => {
     if (!prediction.market) return 'closed';
     
@@ -83,7 +85,7 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
     }
     
     // If no explicit status or invalid status, determine based on close date
-    const closeDate = prediction.market.close_date ? new Date(prediction.market.close_date) : null;
+    const closeDate = prediction.market.close_date ? new Date(prediction.market.close_date + 'T00:00:00') : null;
     const now = new Date();
     
     if (!closeDate) return 'open';
@@ -229,7 +231,7 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
     }
   }, [userId]);
 
-  // Group predictions by market and outcome
+      // Group predictions by market and outcome
   const groupPredictionsByOutcome = (predictions: Prediction[]): GroupedPrediction[] => {
     // Create a map to hold the grouped trades
     const groupedMap = new Map<string, GroupedPrediction>();
