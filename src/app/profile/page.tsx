@@ -25,15 +25,6 @@ interface PnlMetrics {
   positionsValue: number; // Add this new field
 }
 
-// Simple prediction type
-interface Prediction {
-  market_id: number;
-  trade_value: number;
-  outcome_id: number;
-  shares_amt: number;
-  trade_type: 'buy' | 'sell';
-}
-
 export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -329,7 +320,7 @@ export default function UserProfile() {
             <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-purple-500 rounded-full mr-6"></div>
             <div>
               <h1 className="text-3xl font-bold text-white">{profile.username}</h1>
-              <p className="text-gray-400">Joined March 2025</p>
+              <p className="text-gray-400">Joined Nov 2020</p>
             </div>
             <button 
               onClick={openEditModal}
