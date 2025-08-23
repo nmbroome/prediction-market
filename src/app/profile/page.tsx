@@ -16,12 +16,22 @@ interface Profile {
   enable_email_notifications?: boolean;
 }
 
-// PNL Metrics interface
+// PNL Metrics interface - Updated to include positionsValue
 interface PnlMetrics {
   totalPNL: number;
   percentageChange: number;
   volumeTraded: number;
   marketsTraded: number;
+  positionsValue: number; // Add this new field
+}
+
+// Simple prediction type
+interface Prediction {
+  market_id: number;
+  trade_value: number;
+  outcome_id: number;
+  shares_amt: number;
+  trade_type: 'buy' | 'sell';
 }
 
 export default function UserProfile() {
@@ -68,39 +78,54 @@ export default function UserProfile() {
     fetchUserProfile();
   }, []);
 
-  // Fetch PNL metrics once the user is available
+  // Fetch PNL metrics once the user is available - Updated calculation
   useEffect(() => {
     if (user) {
       const fetchPNL = async () => {
         setIsLoadingPnl(true);
         try {
-          // Fetch all predictions for this user with market_id > 40
+          // First, fetch ALL predictions for this user
           const { data: predictionsData, error: predictionsError } = await supabase
             .from("predictions")
-            .select("market_id, trade_value")
-            .eq("user_id", user.id)
-            .gt("market_id", 40); // Only include markets with ID > 40
+            .select("market_id, trade_value, outcome_id, shares_amt, trade_type")
+            .eq("user_id", user.id);
 
           if (predictionsError) throw predictionsError;
 
-          // Fetch all payouts for this user (if any) from markets with ID > 40
+          // Get unique market IDs from predictions
+          const marketIds = [...new Set(predictionsData?.map(pred => pred.market_id) || [])];
+          
+          // Fetch market statuses for these markets
+          const { data: marketsData, error: marketsError } = await supabase
+            .from("markets")
+            .select("id, status")
+            .in("id", marketIds);
+
+          if (marketsError) throw marketsError;
+
+          // Create a map of market ID to status for quick lookup
+          const marketStatusMap = new Map<number, string>();
+          marketsData?.forEach(market => {
+            marketStatusMap.set(market.id, market.status);
+          });
+
+          // Fetch ALL payouts for this user (from resolved markets)
           const { data: payoutsData, error: payoutsError } = await supabase
             .from("payouts")
             .select("*")
-            .eq("user_id", user.id)
-            .gt("market_id", 40); // Only include markets with ID > 40
+            .eq("user_id", user.id);
 
           if (payoutsError) {
             console.warn("Error fetching payouts:", payoutsError);
           }
 
-          // Calculate total PNL from predictions
+          // Calculate profit/loss from ALL markets (open/closed/resolved)
           let totalPNL = 0;
           if (predictionsData) {
             totalPNL = predictionsData.reduce((acc, pred) => acc + (pred.trade_value || 0), 0);
           }
 
-          // Add payouts if any
+          // Add payouts from resolved markets if any
           if (payoutsData && payoutsData.length > 0) {
             // Try different potential payout amount column names
             const possibleColumnNames = ["payout_amount", "amount", "payoutAmount", "value", "payout", "shares"];
@@ -115,25 +140,81 @@ export default function UserProfile() {
             });
           }
 
-          // Use base amount of 1000 instead of user's balance
-          const baseAmount = 1000;
-          
           // Calculate percentage PNL based on the base amount of 1000
+          const baseAmount = 1000;
           const percentageChange = (totalPNL / baseAmount) * 100;
 
-          // Calculate volume traded (absolute sum of all transactions) from markets > 40
+          // Calculate volume traded from ALL markets
           const volumeTraded = predictionsData 
             ? predictionsData.reduce((acc, pred) => acc + Math.abs(pred.trade_value || 0), 0)
             : 0;
 
-          // Calculate number of unique markets traded (only markets > 40)
+          // Calculate number of unique markets traded (all statuses)
           const uniqueMarkets = new Set(predictionsData?.map(pred => pred.market_id) || []);
+
+          // Calculate positions value from OPEN markets only
+          // First, get current user positions from open markets
+          let positionsValue = 0;
+          
+          if (predictionsData) {
+            // Filter predictions from open markets using the market status map
+            const openMarketPredictions = predictionsData.filter(
+              pred => marketStatusMap.get(pred.market_id) === 'open'
+            );
+
+            if (openMarketPredictions.length > 0) {
+              // Get unique open market IDs
+              const openMarketIds = [...new Set(openMarketPredictions.map(pred => pred.market_id))];
+              
+              // For each open market, calculate user's position value
+              for (const marketId of openMarketIds) {
+                const marketPredictions = openMarketPredictions.filter(pred => pred.market_id === marketId);
+                
+                // Get current market outcomes to calculate position values
+                const { data: outcomesData, error: outcomesError } = await supabase
+                  .from("outcomes")
+                  .select("id, tokens")
+                  .eq("market_id", marketId);
+
+                if (outcomesError || !outcomesData) continue;
+
+                // Calculate total market tokens
+                const totalMarketTokens = outcomesData.reduce((sum, outcome) => sum + outcome.tokens, 0);
+                
+                // Group predictions by outcome to get net position
+                const positionsByOutcome = marketPredictions.reduce((acc, pred) => {
+                  if (!acc[pred.outcome_id]) acc[pred.outcome_id] = 0;
+                  
+                  if (pred.trade_type === 'buy') {
+                    acc[pred.outcome_id] += pred.shares_amt || 0;
+                  } else if (pred.trade_type === 'sell') {
+                    acc[pred.outcome_id] -= pred.shares_amt || 0;
+                  }
+                  
+                  return acc;
+                }, {} as Record<number, number>);
+
+                // Calculate position value for each outcome
+                for (const [outcomeId, shares] of Object.entries(positionsByOutcome)) {
+                  if (shares > 0) {
+                    // Find the outcome to get current odds
+                    const outcome = outcomesData.find(o => o.id === Number(outcomeId));
+                    if (outcome && totalMarketTokens > 0) {
+                      const currentOdds = outcome.tokens / totalMarketTokens;
+                      positionsValue += shares * currentOdds;
+                    }
+                  }
+                }
+              }
+            }
+          }
           
           setPnlMetrics({
             totalPNL,
             percentageChange,
             volumeTraded,
-            marketsTraded: uniqueMarkets.size
+            marketsTraded: uniqueMarkets.size,
+            positionsValue // Add this new field
           });
         } catch (err: unknown) {
           let errorMessage = "Error calculating PNL";
@@ -248,7 +329,7 @@ export default function UserProfile() {
             <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-purple-500 rounded-full mr-6"></div>
             <div>
               <h1 className="text-3xl font-bold text-white">{profile.username}</h1>
-              <p className="text-gray-400">Joined Nov 2020</p>
+              <p className="text-gray-400">Joined March 2025</p>
             </div>
             <button 
               onClick={openEditModal}
@@ -258,12 +339,16 @@ export default function UserProfile() {
             </button>
           </div>
 
-          {/* Stats Grid */}
+          {/* Stats Grid - Updated */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             <div className="rounded-lg border-2 border-gray-400 p-4">
               <div className="text-gray-400 mb-2">Positions value</div>
               <div className="text-white font-bold text-xl">
-                {formatCurrency(0)}
+                {isLoadingPnl ? (
+                  <div className="animate-pulse h-6 bg-gray-600 rounded"></div>
+                ) : (
+                  formatCurrency(pnlMetrics?.positionsValue || 0)
+                )}
               </div>
             </div>
             <div className="border-2 border-gray-400 rounded-lg p-4">
