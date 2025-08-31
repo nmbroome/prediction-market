@@ -56,7 +56,6 @@ export default function MarketCard({
   const isResolved = status === 'resolved';
   const isAnnulled = status === 'annulled';
   const isOpen = status === 'open';
-  const isSettled = isResolved || isAnnulled; // Both resolved and annulled markets are settled
 
   // Calculate the current price (YES outcome probability)
   const getCurrentPrice = (): number => {
