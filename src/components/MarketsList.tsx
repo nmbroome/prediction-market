@@ -1,4 +1,4 @@
-// src/components/MarketsList.tsx - Updated to use 'resolved' status
+// src/components/MarketsList.tsx - Updated to handle 'annulled' status
 
 "use client";
 
@@ -19,7 +19,7 @@ interface Market {
   token_pool: number;
   market_maker: string;
   tags: string[];
-  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'annulled'
   close_date?: string;
   outcome_id?: number | null;
   outcomes?: Array<{
@@ -77,9 +77,44 @@ export default function MarketsList() {
     { value: "previous", label: "Previous Markets" }
   ];
 
+  // Get count of markets by status for display
+  const getMarketCounts = () => {
+    if (!markets) return { all: 0, current: 0, previous: 0, resolved: 0, annulled: 0 };
+    
+    const all = markets.length;
+    const current = markets.filter(isCurrentMarket).length;
+    const previous = markets.filter(isPreviousMarket).length;
+    const resolved = markets.filter(m => m.status === 'resolved').length;
+    const annulled = markets.filter(m => m.status === 'annulled').length;
+    
+    return { all, current, previous, resolved, annulled };
+  };
+
+  const counts = getMarketCounts();
+
   return (
     <div className="w-full h-full">
       <h1 className="text-lg font-bold mb-4 text-center text-white">Markets</h1>
+
+      {/* Market Status Summary */}
+      {markets && (
+        <div className="text-center mb-4">
+          <div className="flex justify-center gap-6 text-sm text-gray-400">
+            <span>
+              <span className="text-green-400 font-medium">{counts.current}</span> Open
+            </span>
+            <span>
+              <span className="text-blue-400 font-medium">{counts.resolved}</span> Resolved
+            </span>
+            <span>
+              <span className="text-yellow-400 font-medium">{counts.annulled}</span> Annulled
+            </span>
+            <span>
+              <span className="text-gray-300 font-medium">{counts.all}</span> Total
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Status Filter Buttons */}
       <div className="flex justify-center space-x-2 mb-4">
@@ -94,6 +129,9 @@ export default function MarketsList() {
             }`}
           >
             {option.label}
+            {option.value === 'current' && ` (${counts.current})`}
+            {option.value === 'previous' && ` (${counts.previous})`}
+            {option.value === 'all' && ` (${counts.all})`}
           </button>
         ))}
       </div>
@@ -125,6 +163,26 @@ export default function MarketsList() {
             {selectedTag !== "all" && ` ${selectedTag}`} 
             {" "}market{filteredMarkets.length !== 1 ? "s" : ""}
           </p>
+          
+          {/* Breakdown by status if showing all or previous markets */}
+          {(statusFilter === "all" || statusFilter === "previous") && filteredMarkets.length > 0 && (
+            <div className="text-xs text-gray-500 mt-1">
+              {statusFilter === "all" && (
+                <span>
+                  {filteredMarkets.filter(isCurrentMarket).length} open, {" "}
+                  {filteredMarkets.filter(m => m.status === 'resolved').length} resolved, {" "}
+                  {filteredMarkets.filter(m => m.status === 'annulled').length} annulled
+                </span>
+              )}
+              {statusFilter === "previous" && (
+                <span>
+                  {filteredMarkets.filter(m => m.status === 'resolved').length} resolved, {" "}
+                  {filteredMarkets.filter(m => m.status === 'annulled').length} annulled, {" "}
+                  {filteredMarkets.filter(m => m.status === 'closed').length} closed
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 

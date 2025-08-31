@@ -8,7 +8,7 @@ export interface Market {
   description: string;
   token_pool: number;
   market_maker: string;
-  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'annulled'
   close_date?: string;
   created_at?: string;
   creator_id?: string;
@@ -122,7 +122,7 @@ export interface GroupedPrediction {
   total_shares: number;
   total_value: number;
   current_odds: number;
-  market_status: 'open' | 'closed' | 'resolved';
+  market_status: 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'annulled'
   last_trade_date: string;
   predictions: Prediction[];
 }
@@ -204,15 +204,72 @@ export interface MarketCardProps {
     name: string;
     tokens: number;
   }>;
-  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'annulled'
   winning_outcome?: WinningOutcome | null;
 }
 
 // Market resolution status helper types
-export type MarketResolutionStatus = 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
+export type MarketResolutionStatus = 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'annulled'
 
 export interface ResolvedMarket extends Market {
   outcome_id: number;
   winning_outcome: WinningOutcome;
   status: 'resolved'; // Updated from 'closed' to 'resolved'
+}
+
+// New interface for annulled markets
+export interface AnnulledMarket extends Market {
+  status: 'annulled';
+  settlement_odds: number; // Should be 0.5 for 50% settlement
+}
+
+// Helper function to check if a market is settled (resolved or annulled)
+export function isMarketSettled(market: Market): boolean {
+  return market.status === 'resolved' || market.status === 'annulled';
+}
+
+// Helper function to get settlement value for annulled markets
+export function getAnnulledSettlementOdds(): number {
+  return 0.5; // 50% or 50¢ per share
+}
+
+// Helper function to determine if a market can be traded
+export function isMarketTradable(market: Market): boolean {
+  return market.status === 'open';
+}
+
+// Helper function to get market status display text
+export function getMarketStatusDisplay(market: Market): string {
+  switch (market.status) {
+    case 'pending':
+      return 'Pending';
+    case 'open':
+      return 'Open';
+    case 'closed':
+      return 'Closed';
+    case 'resolved':
+      return 'Resolved';
+    case 'annulled':
+      return 'Annulled';
+    default:
+      return 'Unknown';
+  }
+}
+
+// Helper function to get market status color class
+export function getMarketStatusColorClass(market: Market): string {
+  switch (market.status) {
+    case 'pending':
+      return 'bg-yellow-900 text-yellow-200';
+    case 'open':
+      return 'bg-green-900 text-green-200';
+    case 'closed':
+      return 'bg-red-900 text-red-200';
+    case 'resolved':
+      return 'bg-blue-900 text-blue-200';
+    case 'annulled':
+      return 'bg-yellow-900 text-yellow-200';
+    default:
+      return 'bg-gray-900 text-gray-200';
+  }
 }

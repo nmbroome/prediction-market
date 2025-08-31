@@ -1,4 +1,4 @@
-// src/components/MarketCard.tsx - Updated to use 'resolved' status
+// src/components/MarketCard.tsx - Updated to handle 'annulled' status
 
 "use client";
 
@@ -36,7 +36,7 @@ interface MarketCardProps {
   id: number;
   name: string;
   outcomes?: Outcome[];
-  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled'; // Updated to include 'resolved'
+  status?: 'pending' | 'open' | 'closed' | 'resolved' | 'annulled';
   winning_outcome?: WinningOutcome | null;
 }
 
@@ -52,9 +52,11 @@ export default function MarketCard({
   const [priceChange, setPriceChange] = useState<PriceChangeData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Determine if the market is resolved (now uses 'resolved' status)
+  // Determine market resolution status
   const isResolved = status === 'resolved';
+  const isAnnulled = status === 'annulled';
   const isOpen = status === 'open';
+  const isSettled = isResolved || isAnnulled; // Both resolved and annulled markets are settled
 
   // Calculate the current price (YES outcome probability)
   const getCurrentPrice = (): number => {
@@ -177,16 +179,16 @@ export default function MarketCard({
           Resolved
         </div>
       );
+    } else if (isAnnulled) {
+      return (
+        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-900 text-yellow-200">
+          Annulled
+        </div>
+      );
     } else if (status === 'closed') {
       return (
         <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-900 text-red-200">
           Closed
-        </div>
-      );
-    } else if (status === 'annulled') {
-      return (
-        <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-900 text-gray-200">
-          Annulled
         </div>
       );
     } else if (status === 'pending') {
@@ -235,6 +237,18 @@ export default function MarketCard({
                 <div className="text-sm text-green-300 mb-1">Resolved</div>
                 <div className="text-lg font-bold text-green-200">
                   {winning_outcome.name} Won
+                </div>
+              </div>
+            </div>
+          ) : isAnnulled ? (
+            <div className="mb-4 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+              <div className="text-center">
+                <div className="text-sm text-yellow-300 mb-1">Market Annulled</div>
+                <div className="text-lg font-bold text-yellow-200">
+                  Settled at 50¢
+                </div>
+                <div className="text-xs text-yellow-300 mt-1">
+                  All shares redeemed at initial odds
                 </div>
               </div>
             </div>

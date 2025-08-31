@@ -1,4 +1,4 @@
-// src/components/GroupedTradeHistory.tsx - Updated to use 'resolved' status
+// src/components/GroupedTradeHistory.tsx - Updated to handle 'annulled' status
 
 "use client";
 
@@ -46,7 +46,7 @@ interface GroupedPrediction {
   total_shares: number;
   total_value: number;
   current_odds: number;
-  market_status: 'open' | 'closed' | 'resolved';
+  market_status: 'open' | 'closed' | 'resolved' | 'annulled';
   last_trade_date: string;
   predictions: Prediction[];
 }
@@ -71,16 +71,16 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
     }).format(value);
   };
 
-  // Determine market status - Updated to use 'resolved' status
-  const getMarketStatus = (prediction: Prediction): 'open' | 'closed' | 'resolved' => {
+  // Determine market status - Updated to handle 'annulled' status
+  const getMarketStatus = (prediction: Prediction): 'open' | 'closed' | 'resolved' | 'annulled' => {
     if (!prediction.market) return 'closed';
     
     // First check if the market has an explicit status field
     if (prediction.market.status) {
       // Convert any string status to our expected format
       const status = prediction.market.status.toLowerCase();
-      if (status === 'open' || status === 'closed' || status === 'resolved') {
-        return status as 'open' | 'closed' | 'resolved';
+      if (status === 'open' || status === 'closed' || status === 'resolved' || status === 'annulled') {
+        return status as 'open' | 'closed' | 'resolved' | 'annulled';
       }
     }
     
@@ -96,6 +96,11 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
 
   // Calculate current odds for an outcome based on all outcomes in the market
   const calculateCurrentOdds = (prediction: Prediction): number => {
+    // For annulled markets, always return 0.5 (50%)
+    if (getMarketStatus(prediction) === 'annulled') {
+      return 0.5;
+    }
+
     if (!prediction.outcomes || prediction.outcomes.length === 0) return 0;
     
     const totalTokens = prediction.outcomes.reduce((sum, o) => sum + o.tokens, 0);
@@ -231,7 +236,7 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
     }
   }, [userId]);
 
-      // Group predictions by market and outcome
+  // Group predictions by market and outcome
   const groupPredictionsByOutcome = (predictions: Prediction[]): GroupedPrediction[] => {
     // Create a map to hold the grouped trades
     const groupedMap = new Map<string, GroupedPrediction>();
@@ -346,7 +351,7 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
                   </span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-white">
-                  {(group.current_odds * 100).toFixed(0)}%
+                  {group.market_status === 'annulled' ? '50%' : `${(group.current_odds * 100).toFixed(0)}%`}
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap">
                   <span 
@@ -354,8 +359,10 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
                       group.market_status === 'open' 
                         ? 'bg-green-900 text-green-200' 
                         : group.market_status === 'resolved' 
-                          ? 'bg-blue-900 text-blue-200' 
-                          : 'bg-red-900 text-red-200'
+                          ? 'bg-blue-900 text-blue-200'
+                          : group.market_status === 'annulled'
+                            ? 'bg-yellow-900 text-yellow-200' 
+                            : 'bg-red-900 text-red-200'
                     }`}
                   >
                     {group.market_status.toUpperCase()}
@@ -369,7 +376,7 @@ export default function GroupedTradeHistory({ userId }: GroupedTradeHistoryProps
                     href={`/markets/${group.market_id}`}
                     className="text-blue-400 hover:text-blue-300 font-medium hover:underline"
                   >
-                    Trade
+                    {group.market_status === 'open' ? 'Trade' : 'View'}
                   </Link>
                 </td>
               </tr>

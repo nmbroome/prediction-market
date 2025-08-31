@@ -1,4 +1,4 @@
-// src/app/markets/[id]/page.tsx - Updated to use 'resolved' status
+// src/app/markets/[id]/page.tsx - Updated to handle 'annulled' status
 
 "use client";
 
@@ -38,15 +38,15 @@ export default function MarketDetails() {
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [winningOutcome, setWinningOutcome] = useState<WinningOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [marketStatus, setMarketStatus] = useState<'pending' | 'open' | 'closed' | 'resolved'>('open');
+  const [marketStatus, setMarketStatus] = useState<'pending' | 'open' | 'closed' | 'resolved' | 'annulled'>('open');
 
   // Determine market status based on close_date or explicit status field
-  const determineMarketStatus = (market: Market): 'pending' | 'open' | 'closed' | 'resolved' => {
+  const determineMarketStatus = (market: Market): 'pending' | 'open' | 'closed' | 'resolved' | 'annulled' => {
     // First check if the market has an explicit status field
     if (market.status) {
       const status = market.status.toLowerCase();
-      if (status === 'pending' || status === 'open' || status === 'closed' || status === 'resolved') {
-        return status as 'pending' | 'open' | 'closed' | 'resolved';
+      if (status === 'pending' || status === 'open' || status === 'closed' || status === 'resolved' || status === 'annulled') {
+        return status as 'pending' | 'open' | 'closed' | 'resolved' | 'annulled';
       }
     }
     
@@ -63,6 +63,16 @@ export default function MarketDetails() {
   // Check if market is resolved (has 'resolved' status)
   const isResolved = (market: Market): boolean => {
     return market.status === 'resolved';
+  };
+
+  // Check if market is annulled (has 'annulled' status)
+  const isAnnulled = (market: Market): boolean => {
+    return market.status === 'annulled';
+  };
+
+  // Check if market is settled (resolved or annulled)
+  const isSettled = (market: Market): boolean => {
+    return isResolved(market) || isAnnulled(market);
   };
 
   // Fetch market data (both market details and outcomes).
@@ -174,6 +184,14 @@ export default function MarketDetails() {
       );
     }
 
+    if (isAnnulled(market)) {
+      return (
+        <span className="bg-yellow-600 text-white px-3 py-1 rounded text-sm font-medium">
+          Annulled: Settled at 50¢
+        </span>
+      );
+    }
+
     switch (marketStatus) {
       case 'pending':
         return <span className="bg-yellow-600 text-white px-2 py-1 rounded text-sm">Pending</span>;
@@ -183,6 +201,8 @@ export default function MarketDetails() {
         return <span className="bg-red-600 text-white px-2 py-1 rounded text-sm">Closed</span>;
       case 'resolved':
         return <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm">Resolved</span>;
+      case 'annulled':
+        return <span className="bg-yellow-600 text-white px-2 py-1 rounded text-sm">Annulled</span>;
       default:
         return null;
     }
@@ -210,7 +230,19 @@ export default function MarketDetails() {
               </div>
             </div>
           </div>
-        ) : !isResolved(market) && marketStatus === 'open' ? (
+        ) : isAnnulled(market) ? (
+          <div className="mb-4 p-4 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+            <div className="text-center">
+              <div className="text-lg text-yellow-300 mb-2">⚠️ Market Annulled ⚠️</div>
+              <div className="text-2xl font-bold text-yellow-200">
+                Settled at 50¢ per Share
+              </div>
+              <div className="text-sm text-yellow-400 mt-1">
+                All shares were redeemed at initial market odds (50% probability)
+              </div>
+            </div>
+          </div>
+        ) : !isSettled(market) && marketStatus === 'open' ? (
           <p className="text-2xl mt-2 text-white">
             <strong>{yesOdds} Chance</strong>
           </p>
@@ -284,6 +316,18 @@ export default function MarketDetails() {
                     </div>
                     <p className="text-gray-400">
                       This market has been settled. Winners can claim their payouts.
+                    </p>
+                  </>
+                ) : isAnnulled(market) ? (
+                  <>
+                    <div className="text-yellow-400 text-4xl mb-4">⚠️</div>
+                    <h3 className="text-xl text-white mb-2">Market Annulled</h3>
+                    <div className="text-lg font-bold text-yellow-400 mb-2">
+                      Settled at 50¢ per Share
+                    </div>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      This market was cancelled and all positions were settled at the initial market odds. 
+                      Each share was redeemed for $0.50 regardless of the outcome.
                     </p>
                   </>
                 ) : marketStatus === 'pending' ? (
