@@ -125,18 +125,35 @@ Enum values: `'PayPal'`, `'MTurk'`
 ## Directory map (one-liners)
 | Dir | Role | Notes |
 |---|---|---|
-| `web/` | [UI] Next.js pages/components | UI only; no DB calls |
-| `api/` | [Domain] HTTP handlers & services | Pure business logic |
-| `db/`  | [Data] migrations & seed | Changes must update SCHEMA.md |
-| `scripts/` | [Infra] CLIs & jobs | No app imports |
+| `src/app/` | [UI] Next.js app router pages | Routes, layouts, and page components |
+| `src/components/` | [UI] Reusable React components | Trading forms, charts, UI elements |
+| `src/lib/` | [Domain] Business logic & utilities | Market makers, predictions, types |
+| `public/` | [Static] Static assets | SVG icons and images |
+| `utils/` | [Utils] Legacy Supabase utilities | Deprecated in favor of src/lib/supabase |
 
 ## Module catalog (single line per non-trivial file)
 | Path | Role | Key deps | Owner | Tests |
 |---|---|---|---|---|
-| `web/pages/login.tsx` | login UI | `web/components/AuthForm` | @studentA | `login.spec.ts` |
-| `api/routes/auth.ts` | HTTP auth endpoints | `services/auth/*` | @studentB | `auth.routes.spec.ts` |
-| `api/services/auth/reset.ts` | reset token logic | `db/*`, emailer | @studentB | `reset.spec.ts` |
+| `src/app/page.tsx` | home page UI | `MarketsList` | - | - |
+| `src/app/markets/[id]/page.tsx` | market details & trading | `TradeForm`, `PriceChart` | - | - |
+| `src/app/profile/page.tsx` | user dashboard | `TradeHistory`, PNL calc | - | - |
+| `src/app/leaderboard/page.tsx` | rankings display | `Leaderboard` component | - | - |
+| `src/app/analytics/page.tsx` | platform analytics | analytics components | - | - |
+| `src/app/auth/page.tsx` | login/signup UI | Supabase auth | - | - |
+| `src/components/TradeForm.tsx` | core trading interface | market makers, predictions | - | - |
+| `src/components/MarketCard.tsx` | market preview cards | market data, price changes | - | - |
+| `src/components/PriceChart.tsx` | market probability charts | recharts, predictions | - | - |
+| `src/components/Leaderboard.tsx` | user rankings table | Supabase leaderboards | - | - |
+| `src/components/navbar.tsx` | site navigation | auth state, routing | - | - |
+| `src/lib/marketMakers.ts` | CPMM & fixed price algorithms | pure math functions | - | - |
+| `src/lib/predictions.ts` | trade execution logic | Supabase, balance updates | - | - |
+| `src/lib/getMarkets.ts` | market data fetching | Supabase markets/outcomes | - | - |
+| `src/lib/trading.ts` | trade validation & utilities | market makers, Supabase | - | - |
+| `src/lib/supabase/createClient.ts` | database client | Supabase SDK | - | - |
 
 ## Top flows (human-level)
-1. **Sign in:** `login.tsx` → `auth.ts (POST /login)` → `sessions` table → cookie set  
-2. **Track event:** UI `analytics.ts` → POST `/events` → queue
+1. **User Registration:** `auth/page.tsx` → Supabase auth → profile creation → dashboard redirect
+2. **Market Trading:** `markets/[id]` → `TradeForm` → validate balance/shares → execute trade → update tokens
+3. **Market Creation:** Admin creates market → outcomes defined → CPMM pools initialized → market goes live
+4. **Market Resolution:** Admin selects winning outcome → payouts calculated → user balances updated
+5. **View Analytics:** `analytics/page.tsx` → fetch prediction/user data → render charts → time-filtered views
