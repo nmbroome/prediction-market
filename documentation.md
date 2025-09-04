@@ -1,11 +1,11 @@
-# Project TODO
+# Prophet V3 TODO
 
 ## Requirements
-- [ ] R-1 Secure auth & sessions
-- [ ] R-2 Event analytics across core flows
+- [ ] Combinatorial Markets
+- [ ] Clone markets from Kalshi and Polymarket
 
 ## Features (grouped by requirement)
-### R-1 Secure auth & sessions
+### R-1 Combinatorial markets
 - [ ] F-1.1 Login & Signup UI  (issue #123)
   - [ ] Task: form validation + error states  (issue #201)
   - [ ] Task: invite-only signup gate         (issue #202)
@@ -14,7 +14,7 @@
   - [ ] Task: verify + reset pages
 - [ ] F-1.3 Session hardening (SameSite, rotation) (issue #125)
 
-### R-2 Event analytics
+### R-2 Clone markets
 - [ ] F-2.1 Event schema + helpers            (issue #130)
 - [ ] F-2.2 Fire events in flows A/B/C        (issue #131)
 
@@ -23,7 +23,7 @@
 
 # Architecture
 
-## Custom Types
+## Custom Database Types
 
 ### Market Status
 Enum values: `'open'`, `'closed'`, `'resolved'`, `'annulled'`, `'pending'`
