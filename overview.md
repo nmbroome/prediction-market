@@ -31,9 +31,19 @@ A contract is like betting on the outcome of a future event. For example, in a p
 
 ## Why Prediction Markets?
  - "Turns out the predictions created by prediction markets are more accurate than than experts themselves ... even though the people themselves participating in the market are amateurs" - Lorenzo
-    - Collective Intelligence utilizes  for more cognitive diversity
+    - **Collective Intelligence**: the result of proper aggregation of local information in generating a global solution to a problem that is more optimal than what any individual could have provided. It's not just the product of group opinions, but is instead a weighed and calibrated end-product of an information exchange between a group of thinkers. The four conditions that enable the emergence of collective intelligence in a crowd:
+        - Diversity of opinion: each person should have some private information, even if it's just an eccentric intrepretation of the known facts.
+        - Independence: people's opinions are not determined by the opinions of those around them
+        - Decentralization: people are able to specialize and draw on local knowledge
+        - Aggregation: some mechanism exists for turning private judgement into a collective decision
     - Participants are more thoughtful with their actions in a prediction market since there is a money involved.
+- Prediction markets succeed because their nature supports all 4 factors.
 
+## Challenges and Limitations of Prediction Markets
+- Prior research has identified three major types of errors in prediction markets
+    - Sampling error: Everyone's contributing information that seems reasonable to them, but because everyone's information is flawed or incomplete in similar ways, the crowd guess gets worse instead of better
+    - Market-maker bias: mathematical formula used to set prices can accidentally push people to bet one way or another, even when that's not what they actually believe.
+    - Convergence error: At any moment you check, the market price might be wrong not because people are dumb or biased, but simply because the market is still "figuring itself out" and hasn't reached its stable, final answer yet.
 
 # Price Discovery
 - Price discovery is the process through which the prices of contracts or shares related to the outcomes of events are determined through the analysis of market data, ensuring dair and efficient prices.
@@ -42,3 +52,8 @@ A contract is like betting on the outcome of a future event. For example, in a p
 
 - It generates a price that is fair for both the seller and buyer of the contract
 
+# Glossary
+- **Automated Market Maker (AMM)**: Algorithms or smart contracts that provide liquidity and facilitate trading in decentralized markets by adjusting prices based on supply and demand dynamics. They can calculate prices of contracts. 
+- **Liquidity**: The ease at which participants can buy and sell contracts or shares related to the outcomes of events. A prediction market with high liquidity means that there are a large number of participants actively trading contracts, which allows for smooth and efficient transactions at fair prices.
+- **Market Maker**: A participant or entity that provides liquidity by offering to buy and sell contracts or shares. Market makers play a crucial role in  ensuring that there is a continuous flow of trading activity in the market, which helps maintain liquidity and efficiency. 
+- **Price Discovery**: The process by which the prices of contracts or shares related to the outcomes of events are determined based on the collective wisdom and trading activity of participants.
