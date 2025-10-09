@@ -52,6 +52,42 @@ A contract is like betting on the outcome of a future event. For example, in a p
 
 - It generates a price that is fair for both the seller and buyer of the contract
 
+# Source Notes
+## Why Prediction Markets Aren't Popular
+Thesis: Prediction markets remain unpoular not because of regular (as commonly believed), but because they lack features that attract the 3 types of market participants (savers, gamblers, and sharps). Without subsidies, prediction markets on everything won't work.
+
+### Three Types of Market Participants (and Why None Want Prediction Markets):
+1. Savers - People who enter markets to build wealth
+    - Prediction markets are zero-sum (actually neative-sum with fees)
+    - Responsible savings belong in stocks/bonds that grow wealth over time, not zero-sum betting
+2. Gamblers - People who enter the market for thrills
+    - Prediction markets lack quick resolutions that make betting exciting
+3. Sharps - Traders who profit from superior analysis
+    - Without savers or gamblers providing volume, sharps have no one to profit from
+
+### Subsidies Won't Solve the Problem
+- Three major barriers to subsidizing prediction markets 
+1. The Free Rider Problem
+    - Market prices are public information
+    - Can't easily charge people who benefit from the information
+    - hard to prevent information from being leaked or shared
+
+2. The Cost Problem
+    - If a single expert and the prediction market give you basically the same accuracy, it doesn't make sense to pay more money to subsidize a whole market full of people 
+3. Better Alternatives Exists
+    - Financial institutions use analysts
+    - Governments user intelligence agencies
+    - Companies use consultants
+    - NGOs partner with economists and data scientists
+    - These alternatives provide not just probabilities but reasoning, conditional predictions, and actionable analysis
+    - Virtually no institutions currently subsidize prediction markets despite these groups being theoretically beatable
+
+### Conclusion
+The authors argue against the view that regulation is blocking ubiquitous predictions markets. Instead the current small size of the prediction market universe reflects actual market demand. Even removing all regulatory barriers wouldn't dramatically expand prediction markets because they fundamentall lack the features that attrack market participants. Prediction markets are a useful tool, but they are not an oracle that will revolutionize how we know the future. 
+
+
+
+
 # Glossary
 - **Automated Market Maker (AMM)**: Algorithms or smart contracts that provide liquidity and facilitate trading in decentralized markets by adjusting prices based on supply and demand dynamics. They can calculate prices of contracts. 
 - **Liquidity**: The ease at which participants can buy and sell contracts or shares related to the outcomes of events. A prediction market with high liquidity means that there are a large number of participants actively trading contracts, which allows for smooth and efficient transactions at fair prices.
