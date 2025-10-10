@@ -86,7 +86,22 @@ Thesis: Prediction markets remain unpoular not because of regular (as commonly b
 The authors argue against the view that regulation is blocking ubiquitous predictions markets. Instead the current small size of the prediction market universe reflects actual market demand. Even removing all regulatory barriers wouldn't dramatically expand prediction markets because they fundamentall lack the features that attrack market participants. Prediction markets are a useful tool, but they are not an oracle that will revolutionize how we know the future. 
 
 
+## Higher-Order Forecasts
+- Higher-order forecasts: forecasts about forecasts (Predictions on what other people will predict)
 
+- Order 0: Established truths that already happened
+- Order 1: Regular Forecasting (prediction about real-world events or outcomes)
+- Order 2: Forecasting about Forecasting (i.e. "How many forecasts will the question 'What will be the GDP of the US in 2024?' receive in total?")
+- Order 3: predictions about the relationships and qualities of other predictions
+
+-  higher-order forecasts could allow forecasters to express views on the relationships between predictions, leading to a more efficient and informative overall forecasting ecosystem.
+
+- Benefits
+    1. Identifies Overconfidence: Higher-Order help create a market where people bet on how overconfident other forecasters are (i.e. "How overconfident is forecaster A about the GDP prediction?")
+    2. Prioritize Questions: You can't forecast everything. Higher order forecasts can forecast which questions will be the most valuable
+    3. Surface Relationships: Higher order forecasting can help determine whether different forecasts will move together/ be connected
+    4. Faster Information Aggregation: Some events take a long time to resolve, but forecas might change way before the event happens, givign you early warning. High-order forecasting can be used to bet on what the forecast will say in the future, which reoslves faster than the actual event (i.e. Will the forecast for X be on Wednesday, given some data?)
+    5. Leverage Existing Infrastructure: Building new prediction systems is hard and expensive. High-order predictions can use the same platforms and systems that alreadt exist for 1st order forecasts
 
 # Glossary
 - **Automated Market Maker (AMM)**: Algorithms or smart contracts that provide liquidity and facilitate trading in decentralized markets by adjusting prices based on supply and demand dynamics. They can calculate prices of contracts. 
