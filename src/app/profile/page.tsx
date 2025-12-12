@@ -33,6 +33,8 @@ export default function UserProfile() {
   const [loading, setLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [showTradeHistory, setShowTradeHistory] = useState<boolean>(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   
   // Email notifications state
   const [emailNotifications, setEmailNotifications] = useState<boolean>(false);
@@ -311,6 +313,26 @@ export default function UserProfile() {
     }).format(value / 100);
   };
 
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+
+    setResettingPassword(true);
+    setResetEmailSent(false);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    setResettingPassword(false);
+
+    if (error) {
+      console.error("Error sending reset password email:", error.message);
+      return;
+    }
+
+    setResetEmailSent(true);
+  };
+
   return (
     <div className="min-h-screen p-6">
       {user && profile ? (
@@ -391,7 +413,21 @@ export default function UserProfile() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-gray-400">Email</p>
-                <p className="text-white">{profile.email || 'N/A'}</p>
+                <p className="text-white mb-2">{profile.email || "N/A"}</p>
+
+                <button
+                  onClick={handleResetPassword}
+                  disabled={resettingPassword}
+                  className="mt-2 rounded-lg border border-gray-500 px-4 py-2 text-sm text-white hover:bg-[#333] disabled:opacity-50"
+                >
+                  {resettingPassword ? "Sending…" : "Reset Password"}
+                </button>
+
+                {resetEmailSent && (
+                  <p className="mt-2 text-sm text-green-400">
+                    Password reset email sent.
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-gray-400">Player ID</p>
