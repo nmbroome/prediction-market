@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import supabase from '@/lib/supabase/createClient';
+import type { AuthChangeEvent } from '@supabase/supabase-js';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -12,12 +13,15 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event: AuthChangeEvent) => {
         if (event === 'PASSWORD_RECOVERY') {
           setReady(true);
         }
-      });
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, []);
@@ -52,73 +56,75 @@ export default function ResetPasswordPage() {
     setSuccess(true);
   };
 
-  if (!ready && !success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-gray-500">Validating reset link…</p>
-      </div>
-    );
-  }
-
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="w-full max-w-sm rounded-lg border p-6 text-center">
-          <h1 className="mb-2 text-lg font-semibold">Password updated</h1>
-          <p className="text-sm text-gray-600">
-            You can now log in with your new password.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm rounded-lg border bg-white p-6 shadow-sm"
-      >
-        <h1 className="mb-4 text-lg font-semibold">Reset password</h1>
-
-        <div className="mb-3">
-          <label className="mb-1 block text-sm font-medium">
-            New password
-          </label>
-          <input
-            type="password"
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="mb-4">
-          <label className="mb-1 block text-sm font-medium">
-            Confirm password
-          </label>
-          <input
-            type="password"
-            className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            required
-          />
-        </div>
-
-        {error && (
-          <p className="mb-3 text-sm text-red-600">{error}</p>
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="w-full max-w-sm">
+        {!ready && !success && (
+          <p className="text-sm text-gray-400 text-center">
+            Validating reset link…
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-md bg-black py-2 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {loading ? 'Updating…' : 'Update password'}
-        </button>
-      </form>
+        {ready && !success && (
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-lg border-2 border-gray-400 bg-[#111] p-6"
+          >
+            <h1 className="mb-4 text-xl font-semibold text-white">
+              Reset password
+            </h1>
+
+            <div className="mb-3">
+              <label className="mb-1 block text-sm text-gray-300">
+                New password
+              </label>
+              <input
+                type="password"
+                className="w-full rounded-md border border-gray-500 bg-[#1a1a1a] px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="mb-1 block text-sm text-gray-300">
+                Confirm password
+              </label>
+              <input
+                type="password"
+                className="w-full rounded-md border border-gray-500 bg-[#1a1a1a] px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+              />
+            </div>
+
+            {error && (
+              <p className="mb-3 text-sm text-red-400">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Updating…' : 'Update password'}
+            </button>
+          </form>
+        )}
+
+        {success && (
+          <div className="rounded-lg border-2 border-gray-400 bg-[#111] p-6 text-center">
+            <h1 className="mb-2 text-lg font-semibold text-white">
+              Password updated
+            </h1>
+            <p className="text-sm text-gray-400">
+              You can now log in with your new password.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
