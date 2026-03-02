@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l /Users/noah/github/prediction_market/src/components/*.tsx)",
+      "Bash(npm run build)"
+    ]
+  }
+}
