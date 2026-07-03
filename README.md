@@ -1,5 +1,7 @@
 # Prophet V3: Prediction Market Platform
 
+<!-- Prophet V3 -->
+
 ## Project Overview
 
 Prophet V3 is a web-based prediction market platform where users can trade on the outcomes of future events. The platform uses automated market makers to facilitate trading and price discovery without requiring traditional order books.
