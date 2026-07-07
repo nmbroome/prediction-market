@@ -12,6 +12,7 @@ interface Profile {
   username: string;
   email?: string;
   balance?: number;
+  payment_method?: string;
   payment_id?: string;
   enable_email_notifications?: boolean;
 }
@@ -29,6 +30,7 @@ export default function UserProfile() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [newUsername, setNewUsername] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [paymentId, setPaymentId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -56,7 +58,7 @@ export default function UserProfile() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, email, balance, payment_id, enable_email_notifications")
+        .select("id, username, email, balance, payment_method, payment_id, enable_email_notifications")
         .eq("user_id", userData.user.id)
         .single();
 
@@ -227,6 +229,7 @@ export default function UserProfile() {
   const openEditModal = () => {
     if (!profile) return;
     setNewUsername(profile.username || "");
+    setPaymentMethod(profile.payment_method || "PayPal");
     setPaymentId(profile.payment_id || "");
     setIsModalOpen(true);
   };
@@ -234,6 +237,7 @@ export default function UserProfile() {
   const closeEditModal = () => {
     setIsModalOpen(false);
     setNewUsername("");
+    setPaymentMethod("");
     setPaymentId("");
   };
 
@@ -243,8 +247,9 @@ export default function UserProfile() {
 
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ 
+      .update({
         username: newUsername,
+        payment_method: paymentMethod,
         payment_id: paymentId
       })
       .eq("id", profile.id);
@@ -252,10 +257,11 @@ export default function UserProfile() {
     if (updateError) {
       console.error("Error updating profile:", updateError.message);
     } else {
-      setProfile({ 
-        ...profile, 
+      setProfile({
+        ...profile,
         username: newUsername,
-        payment_id: paymentId 
+        payment_method: paymentMethod,
+        payment_id: paymentId
       });
       closeEditModal();
     }
@@ -438,7 +444,13 @@ export default function UserProfile() {
                 <p className="text-white">{formatCurrency(profile.balance || 0)}</p>
               </div>
               <div>
-                <p className="text-gray-400">Payment ID</p>
+                <p className="text-gray-400">Payment Method</p>
+                <p className="text-white">{profile.payment_method || 'Not set'}</p>
+              </div>
+              <div>
+                <p className="text-gray-400">
+                  {profile.payment_method === 'MTurk' ? 'MTurk Worker ID' : 'PayPal Email'}
+                </p>
                 <p className="text-white">{profile.payment_id || 'N/A'}</p>
               </div>
             </div>
@@ -493,6 +505,8 @@ export default function UserProfile() {
         <EditProfileModal
           newUsername={newUsername}
           setNewUsername={setNewUsername}
+          paymentMethod={paymentMethod}
+          setPaymentMethod={setPaymentMethod}
           paymentId={paymentId}
           setPaymentId={setPaymentId}
           onClose={closeEditModal}
