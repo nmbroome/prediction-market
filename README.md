@@ -26,7 +26,9 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 - **User Authentication**: Complete login/signup flow with Supabase authentication
 - **User Profiles**: Personal dashboards showing trading history and portfolio performance
 - **PNL Tracking**: Tracks profit and loss for users across all markets
-- **Market Creation**: Interface for users to create new prediction markets
+- **Forecasting Performance**: Per-user skill radar on the profile — accuracy, precision, recall, F1, and AUC computed from resolved-market forecasts (a D3 SVG chart; see `PerformanceRadar` / `lib/userPerformance.ts`)
+- **Platform Analytics**: Aggregate dashboard incl. a market calibration chart
+- **Market Creation & Resolution**: Handled by the sibling **admin repo** (`prediction-market-admin`) against the same Supabase DB — not by this player-facing app
 
 ## Project Structure
 
@@ -35,28 +37,31 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
   - `/app/page.tsx`: Main landing page showing markets list
   - `/app/markets`: Markets browsing pages
     - `/app/markets/[id]/page.tsx`: Individual market details and trading interface
-  - `/app/profile/page.tsx`: User profile dashboard 
-  - `/app/market_maker/page.tsx`: Testing page for market maker algorithms
-  - `/app/auth`: Authentication-related pages
-    - `/app/auth/callback/route.ts`: OAuth callback route
+  - `/app/profile/page.tsx`: User profile dashboard (PNL, forecasting radar, trade history)
+  - `/app/analytics/page.tsx`: Platform analytics dashboard
+  - `/app/leaderboard/page.tsx`: User rankings
+  - `/app/reset-password/page.tsx`: Password reset
+  - `/app/market_maker/page.tsx`: Standalone market-maker calculator (dev playground)
+  - `/app/auth/page.tsx`: Combined login + signup page (toggled in one page)
+    - `/app/auth/callback/route.ts`: Auth code-exchange callback route
     - `/app/auth/auth-error/page.tsx`: Error handling for auth
-  - `/app/login` & `/app/signup`: User authentication pages
-  - `/app/layout.tsx`: Root layout with global styling and navigation
+  - `/app/layout.tsx`: Root layout with global styling, navbar, and payout-reminder banner
 
 ### Components
-- `/src/components`: Reusable React components
-  - `TradeForm.tsx`: Core trading interface for buying/selling shares
-  - `MarketsList.tsx`: Displays filterable list of available markets
+> Dead/legacy components were removed on 2026-07-11 — everything listed here is wired into a route. See `CLAUDE.md` → **Orientation** for the full route→component map.
+
+- `/src/components`: React components
+  - `navbar.tsx`: Site-wide navigation
+  - `MigrationBanner.tsx`: Global payout-reminder banner (PayPal/MTurk)
+  - `MarketsList.tsx`: Filterable list of available markets
   - `MarketCard.tsx`: Card component for market preview
-  - `CreateMarket.tsx`: Form for creating new prediction markets
-  - `CPMM.tsx`: Component handling constant product market maker logic
-  - `TradeHistory.tsx`: Displays user's trading history
+  - `TradeForm.tsx`: Core trading interface for buying/selling shares
+  - `PriceChart.tsx`: Market price history chart (Recharts)
+  - `PerformanceRadar.tsx`: Forecasting-skill radar on the profile (D3 SVG)
+  - `TradeHistory.tsx`: User's trading history (takes a `userId` prop)
   - `EditProfileModal.tsx`: Modal for profile editing
-  - `PredictionHistory.tsx`: Component for viewing prediction history
-  - `Leaderboard.tsx`: Displays user rankings
-  - `navbar.tsx`: Site-wide navigation component
-  - Authentication components:
-    - `login-button.tsx` & `logout-button.tsx`: Authentication controls
+  - `Leaderboard.tsx`: User rankings
+  - `analytics/`: Analytics dashboard charts (MarketStats, CalibrationChart, …)
 
 ### Business Logic
 - `/src/lib`: Utility functions and business logic
@@ -64,16 +69,15 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
     - `constantProductMarketMaker()`: Core function for CPMM calculations
   - `/lib/predictions.ts`: Trading functionality
     - `addPrediction()`: Handles trade execution and database updates
-  - `/lib/calculatePNL.ts`: Profit and loss calculations
-  - `/lib/addMarket.ts`: Functions for creating new markets
-  - `/lib/addAnswers.ts`: Functions for adding outcomes to markets
+  - `/lib/userPerformance.ts`: Per-user forecasting metrics (accuracy/precision/recall/F1/AUC)
+    - `computeUserPerformance()` (pure) + `getUserPerformance(userId)` (fetch wrapper)
   - `/lib/getMarkets.ts`: Functions for retrieving market data
   - `/lib/constants.ts`: Application-wide constants like market tags
-  - `/lib/types.ts`: TypeScript type definitions
+  - `/lib/tradingTypes.ts`: Core interfaces + market-status helpers
+  - _(Dead lib files — `trading.ts`, `calculatePNL.ts`, `addMarket.ts`, `addAnswers.ts`, `types.ts`, `browser-client.ts` — were removed 2026-07-11. Trade validation/formatting now lives inline in `TradeForm.tsx` + `predictions.ts`.)_
   - `/lib/supabase`: Supabase client initialization
-    - `browser-client.ts`: Client for browser environment
-    - `server-client.ts`: Client for server environment
-    - `createClient.ts`: General client creation
+    - `createClient.ts`: Default client singleton (imported by most client components)
+    - `server-client.ts`: Client for SSR / server components / route handlers
 
 ### Static Assets
 - `/public`: Static assets
@@ -188,6 +192,11 @@ Uses Constant Product Market Maker (CPMM) algorithm to determine prices:
 | created_at | Timestamp when the payout was processed |
 
 ## Development Status
+
+### July 11, 2026
+- Add per-user forecasting performance radar to the profile (classification metrics: accuracy, precision, recall, F1, AUC — not Brier/calibration). Custom D3 SVG chart; logic in `lib/userPerformance.ts`, reusable by the admin repo.
+- Land Playwright end-to-end test setup (`e2e/`, `npm run test:e2e`).
+- Remove ~20 dead/unreachable files (old market-maker experiments, unused admin/creation UIs, duplicate profile, unused analytics charts, dead lib helpers).
 
 ### August 6, 2025
 - Combine login/sign up buttons and page
