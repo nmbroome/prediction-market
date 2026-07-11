@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase/createClient';
 
@@ -192,6 +193,20 @@ export default function AuthPage() {
               isLogin ? 'Sign In' : 'Create Account'
             )}
           </button>
+
+          {!isLogin && (
+            <p className="text-center text-xs text-gray-400">
+              By creating an account you agree to Prophet&apos;s{' '}
+              <Link href="/terms" className="text-blue-400 hover:underline">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="text-blue-400 hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          )}
         </form>
 
         {/* Message Display */}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/navbar";
 import MigrationBanner from "@/components/MigrationBanner";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Prediction market",
@@ -15,10 +16,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-[#101827] min-h-screen w-full">
+      <body className="bg-[#101827] min-h-screen w-full flex flex-col">
         <MigrationBanner/>
         <Navbar/>
-        {children}
+        <div className="flex-1">{children}</div>
+        <Footer/>
       </body>
     </html>
   );

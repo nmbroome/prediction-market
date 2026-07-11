@@ -19,11 +19,14 @@
     "openai": "^4.80.0",
     "react": "^19.0.0-rc-69d4b800-20241021",
     "react-dom": "^19.0.0-rc-69d4b800-20241021",
+    "react-markdown": "^10.1.0",
     "recharts": "^2.15.3",
+    "remark-gfm": "^4.0.1",
     "vercel-rust": "^4.0.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
