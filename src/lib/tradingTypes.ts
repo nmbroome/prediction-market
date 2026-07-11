@@ -130,7 +130,6 @@ export interface GroupedPrediction {
 export interface LeaderboardEntry {
   user_id: string;
   username?: string;
-  payment_id?: string | null;
   total_profit: number;
   percent_pnl: number;
   balance: number;
