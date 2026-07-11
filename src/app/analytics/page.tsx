@@ -7,6 +7,7 @@ import MarketStats from "@/components/analytics/MarketStats";
 import MarketActivityCharts from "@/components/analytics/MarketActivityCharts";
 import UserStatistics from "@/components/analytics/UserStatistics";
 import UserActivityCharts from "@/components/analytics/UserActivityCharts";
+import CalibrationChart from "@/components/analytics/CalibrationChart";
 
 type KpiTimeFilter = "2d" | "7d" | "30d";
 
@@ -474,6 +475,9 @@ export default function AnalyticsPage() {
               data={analyticsData.marketActivityData}
               loading={false}
             />
+
+            {/* Platform Calibration */}
+            <CalibrationChart />
           </>
         )}
 
