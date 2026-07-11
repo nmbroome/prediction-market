@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import supabase from "@/lib/supabase/createClient";
 import TradeHistory from "@/components/TradeHistory";
+import PerformanceRadar from "@/components/PerformanceRadar";
 import { User } from "@supabase/supabase-js";
 import EditProfileModal from "@/components/EditProfileModal";
 
@@ -412,6 +413,9 @@ export default function UserProfile() {
               </div>
             </div>
           </div>
+
+          {/* Forecasting Performance */}
+          <PerformanceRadar userId={user.id} />
 
           {/* Additional Details */}
           <div className="border-2 border-gray-400 rounded-lg p-6 mb-6">

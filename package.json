@@ -6,11 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.47.14",
+    "@types/d3-scale": "^4.0.9",
+    "d3-scale": "^4.0.2",
     "next": "^15.0.9",
     "openai": "^4.80.0",
     "react": "^19.0.0-rc-69d4b800-20241021",
@@ -19,9 +23,11 @@
     "vercel-rust": "^4.0.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv": "^17.4.2",
     "eslint": "^8",
     "eslint-config-next": "15.0.1",
     "postcss": "^8",
