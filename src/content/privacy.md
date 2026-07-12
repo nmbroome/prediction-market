@@ -44,7 +44,7 @@ Every trade you make is recorded. For each trade we store: the market, the outco
 - **Device and connection data.** Browser type, operating system, device identifiers, and error and crash reports.
 - **Cookies and local storage.** Used to keep you signed in, remember preferences, and measure platform performance.
 
-We use PostHog, a product analytics tool, to collect usage and error data so we can find and fix problems with the platform. PostHog is configured not to capture IP addresses. See Section 10.
+We use PostHog, a product analytics tool, to collect usage and error data so we can find and fix problems with the platform. This includes session replays — recordings of on-screen interactions used to diagnose reported bugs — configured to mask text you type (such as forecast rationales and payment details) so that content is not captured. PostHog is configured not to capture IP addresses. See Section 10.
 
 ### 3.4 Compensation
 
@@ -179,7 +179,7 @@ Payout records are retained as long as required by tax law.
 
 We use cookies and local storage to keep you signed in, remember your preferences, and understand how the platform is used.
 
-We use PostHog for product analytics and error monitoring. PostHog is configured to disable IP address capture. We do not use analytics data for advertising, and we do not share it with advertising networks.
+We use PostHog for product analytics, error monitoring, and session replay. Session replays record on-screen interactions to help us reproduce and fix bugs, and are configured to mask the text you type so your typed content is not recorded. PostHog is configured to disable IP address capture. We do not use analytics data for advertising, and we do not share it with advertising networks.
 
 You can control cookies through your browser settings. Disabling some cookies will limit platform functionality.
 

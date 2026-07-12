@@ -4,6 +4,7 @@ import Navbar from "@/components/navbar";
 import MigrationBanner from "@/components/MigrationBanner";
 import Footer from "@/components/Footer";
 import ConsentGate from "@/components/ConsentGate";
+import PostHogProvider from "@/components/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "Prediction market",
@@ -18,11 +19,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-[#101827] min-h-screen w-full flex flex-col">
-        <MigrationBanner/>
-        <Navbar/>
-        <div className="flex-1">{children}</div>
-        <Footer/>
-        <ConsentGate/>
+        <PostHogProvider>
+          <MigrationBanner/>
+          <Navbar/>
+          <div className="flex-1">{children}</div>
+          <Footer/>
+          <ConsentGate/>
+        </PostHogProvider>
       </body>
     </html>
   );
