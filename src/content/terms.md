@@ -109,13 +109,13 @@ Deleting your account does not remove your contributions to the archive of alrea
 
 ### 6.2 Coded Data Sharing with External Researchers
 
-Some research requires linking one participant's activity across many markets over time. That cannot be done from the public archive alone, and it is more sensitive, so we handle it differently.
+Some research requires linking one participant's activity across many markets over time. That cannot be done from the public archive alone.
 
-With your **separate, affirmative consent**, we may share a coded dataset of your trading history with academic researchers at other institutions. Coded means your username, email, payout information, and name are removed and replaced with a research identifier.
+**Participation in Prophet includes this use of your data.** As part of the research you take part in by using Prophet, we may share a coded dataset of your trading history with academic and other researchers. Coded means your username, email, payout information, and name are removed and replaced with a research identifier. This is a condition of participating in Prophet, not a separate optional choice.
 
-Coded data is not anonymous, and we will not tell you it is. We control it by contract: every receiving institution signs a Data Use Agreement prohibiting re-identification and redistribution, restricting use to an approved protocol, and requiring destruction at the end of the study. Where the research is human subjects research, it is reviewed by an Institutional Review Board first.
+Coded data is not anonymous, and we will not tell you it is. We control it by contract: every receiving institution signs a Data Use Agreement prohibiting re-identification and redistribution, restricting use to an approved protocol, and requiring destruction at the end of the study.
 
-**Consent is optional and separate.** You can trade on Prophet, compete, and receive payouts without consenting. You can withdraw consent at any time in your settings. Withdrawal prevents future inclusion but cannot recall datasets already delivered or research already published, and does not affect the public archive under Section 6.1.
+You cannot selectively exclude your data while continuing to participate. If you do not want your data used this way, do not use Prophet. You may stop future use at any time by closing your account, but closing your account does not recall datasets already shared or research already published.
 
 Full detail is in the Privacy Policy, Section 5.
 

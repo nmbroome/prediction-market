@@ -16,6 +16,7 @@ interface Profile {
   payment_method?: string;
   payment_id?: string;
   enable_email_notifications?: boolean;
+  tos_accepted_at?: string | null;
 }
 
 // PNL Metrics interface - Updated to include positionsValue
@@ -59,7 +60,7 @@ export default function UserProfile() {
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
-        .select("id, username, email, balance, payment_method, payment_id, enable_email_notifications")
+        .select("id, username, email, balance, payment_method, payment_id, enable_email_notifications, tos_accepted_at")
         .eq("user_id", userData.user.id)
         .single();
 
@@ -487,6 +488,27 @@ export default function UserProfile() {
                 </label>
               </div>
             </div>
+          </div>
+
+          {/* Research Participation */}
+          <div className="border-2 border-gray-400 rounded-lg p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Research Participation</h2>
+            <p className="text-gray-400 text-sm">
+              Prophet is a research platform. By using it you take part in the research
+              it produces: your forecasts on resolved markets become part of a permanent
+              public research archive, and a coded (de-identified) copy of your trading
+              history may be shared with researchers under a Data Use Agreement. See the{" "}
+              <a href="/terms" target="_blank" className="text-blue-400 hover:underline">Terms of Service</a>{" "}
+              and{" "}
+              <a href="/privacy" target="_blank" className="text-blue-400 hover:underline">Privacy Policy</a>.
+              To stop future use of your data, close your account.
+            </p>
+            {profile.tos_accepted_at && (
+              <p className="text-gray-500 text-xs mt-4">
+                Terms accepted on{" "}
+                {new Date(profile.tos_accepted_at).toLocaleDateString()}.
+              </p>
+            )}
           </div>
 
           {/* Trade History Toggle */}

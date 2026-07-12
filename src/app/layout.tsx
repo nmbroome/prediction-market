@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/navbar";
 import MigrationBanner from "@/components/MigrationBanner";
 import Footer from "@/components/Footer";
+import ConsentGate from "@/components/ConsentGate";
 
 export const metadata: Metadata = {
   title: "Prediction market",
@@ -21,6 +22,7 @@ export default function RootLayout({
         <Navbar/>
         <div className="flex-1">{children}</div>
         <Footer/>
+        <ConsentGate/>
       </body>
     </html>
   );

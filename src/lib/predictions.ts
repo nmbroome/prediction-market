@@ -14,7 +14,25 @@ export type Prediction = {
 export async function addPrediction(prediction: Prediction) {
   const { user_id, market_id, outcome_id, trade_value, trade_type } = prediction;
 
-  // 0. For buy trades, validate user has sufficient balance BEFORE making any changes
+  // 0a. Consent gate: the user must have accepted the current Terms of Service
+  // (which includes the public research archive) before any trade is recorded.
+  // Predictions ARE the archive, so this is the enforcement point. NOTE: this
+  // runs client-side against the anon key; a matching RLS policy on
+  // predictions INSERT in the admin repo is the tamper-proof backstop.
+  const { data: consentData, error: consentError } = await supabase
+    .from("profiles")
+    .select("tos_accepted_at")
+    .eq("user_id", user_id)
+    .single();
+
+  if (consentError) {
+    throw new Error(`Failed to verify consent: ${consentError.message}`);
+  }
+  if (!consentData.tos_accepted_at) {
+    throw new Error("You must accept the Terms of Service before trading.");
+  }
+
+  // 0b. For buy trades, validate user has sufficient balance BEFORE making any changes
   if (trade_type === 'buy') {
     const tradeAmount = Math.abs(trade_value); // trade_value is negative for buys
     

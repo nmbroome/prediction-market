@@ -92,7 +92,7 @@ The archive is permanent. It is published so that researchers, journalists, and 
 
 Some research questions cannot be answered from the public archive alone. Studies of trader typologies, learning over time, or manipulation detection require linking a single participant's activity across many markets and long time periods.
 
-For those studies, we may share a **coded** dataset with academic researchers at other institutions. In a coded dataset:
+Using Prophet means participating in this research, and sharing of your coded data is part of that participation (see Section 5.3). For these studies, we may share a **coded** dataset with academic and other researchers at other institutions. In a coded dataset:
 
 - Your username, email address, PayPal address, and legal name are **removed**.
 - Your account is replaced with a **research identifier** that is not derivable from your account.
@@ -108,15 +108,15 @@ Instead, we control it by agreement. Before any coded dataset leaves Cassandra, 
 - requires specified security controls; and
 - requires the data to be destroyed or returned at the end of the study.
 
-Where the research constitutes human subjects research, it is reviewed by an Institutional Review Board before the data is shared.
+Where a receiving institution's use of the data requires ethical or institutional review, such as review by an Institutional Review Board, that institution is responsible for obtaining it before using the data.
 
-### 5.3 Your Consent, and How to Withdraw It
+### 5.3 Participation and Your Data
 
-You will be asked to affirmatively consent to the sharing described in Section 5.2 when you create your account. It is a separate choice, not something buried in these terms.
+Prophet is a research platform, and using it means participating in the research it produces. The public archive under Section 5.1 and the coded data sharing under Section 5.2 are **part of participating in Prophet, not separate optional choices.** You cannot use Prophet while excluding your data from this research.
 
-**Consenting is optional.** You can use Prophet, trade, and receive payouts without consenting to coded data sharing.
+If you do not want your data used this way, do not use Prophet.
 
-You may withdraw consent at any time in your account settings. Withdrawal stops your data from being included in any future dataset. It cannot retract datasets already delivered to researchers, and it cannot unpublish research already published. It also does not remove your contributions from the public archive under Section 5.1, which is governed by the Terms of Service and is not part of this consent.
+You may stop the future use of your data at any time by closing your account. Doing so stops your data from being included in datasets shared after that point. It cannot retract datasets already delivered to researchers, unpublish research already published, or remove your contributions from the public archive under Section 5.1.
 
 ### 5.4 Aggregate and Published Results
 
@@ -144,8 +144,8 @@ You may:
 
 - **Access** a copy of the data we hold about you.
 - **Correct** inaccurate information.
-- **Delete** your account. See Section 5.1 for what deletion does and does not reach.
-- **Withdraw research consent** at any time, as described in Section 5.3.
+- **Delete** your account. See Section 5.1 for what deletion does and does not reach, and Section 5.3 for how closing your account stops future use of your data.
+- **Withdraw consent** for any processing that is based on your consent, such as the optional research covariates described in Section 3.1.
 - **Opt out of non-essential email** at any time.
 - **Object or restrict** processing in certain circumstances.
 
@@ -157,10 +157,10 @@ To exercise any of these, contact us or use your account settings.
 
 If you are in the European Economic Area or the United Kingdom, we process your personal data on the following bases:
 
-- **Contract** (Art. 6(1)(b)) to operate your account, execute trades, and pay you.
-- **Consent** (Art. 6(1)(a)) for the coded research data sharing described in Section 5.2, and for optional research covariates. You may withdraw consent at any time.
+- **Contract** (Art. 6(1)(b)) to operate your account, execute trades, pay you, and provide the research participation that is the core purpose of the platform, including the public archive and coded data sharing described in Section 5.
+- **Public interest and scientific research** (Art. 6(1)(e) and Art. 89) for the research described in Section 5, with appropriate safeguards including data minimization and coding.
+- **Consent** (Art. 6(1)(a)) for the optional research covariates described in Section 3.1. You may withdraw this consent at any time.
 - **Legitimate interests** (Art. 6(1)(f)) to protect market integrity, prevent fraud and manipulation, secure the platform, and diagnose errors.
-- **Public interest and scientific research** (Art. 6(1)(e) and Art. 89) for research conducted in the public interest, with appropriate safeguards including data minimization and coding.
 - **Legal obligation** (Art. 6(1)(c)) where processing is required by law, including tax reporting.
 
 ---

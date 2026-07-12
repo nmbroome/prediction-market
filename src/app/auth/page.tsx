@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import supabase from '@/lib/supabase/createClient';
+import { recordConsent } from '@/lib/consent';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,6 +13,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const router = useRouter();
 
@@ -39,23 +41,37 @@ export default function AuthPage() {
       setMessage('Passwords do not match.');
       return;
     }
-    
+    if (!agreedToTerms) {
+      setMessage('You must agree to the Terms of Service and Privacy Policy.');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
-    
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
     });
-    
+
     if (error) {
       console.error('Error signing up:', error.message);
       setMessage(`Error: ${error.message}`);
     } else {
+      // If email confirmation is off, signUp returns a session and we can write
+      // the consent record now. If it's on, there's no session yet — ConsentGate
+      // records it on the user's first authenticated session instead.
+      if (data.user && data.session) {
+        try {
+          await recordConsent(data.user.id);
+        } catch (consentErr) {
+          console.error('Failed to record consent:', consentErr);
+        }
+      }
       console.log('Sign-up successful:', data);
       setMessage('Signup successful! Please check your email to confirm.');
     }
-    
+
     setLoading(false);
   };
 
@@ -74,6 +90,7 @@ export default function AuthPage() {
     setPassword('');
     setConfirmPassword('');
     setMessage('');
+    setAgreedToTerms(false);
   };
 
   const toggleMode = () => {
@@ -176,9 +193,31 @@ export default function AuthPage() {
             </div>
           )}
 
+          {!isLogin && (
+            <label className="flex items-start gap-2 text-xs text-gray-300 text-left">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                I agree to Prophet&apos;s{' '}
+                <Link href="/terms" target="_blank" className="text-blue-400 hover:underline">
+                  Terms of Service
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy" target="_blank" className="text-blue-400 hover:underline">
+                  Privacy Policy
+                </Link>
+                , including the research participation they describe.
+              </span>
+            </label>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (!isLogin && !agreedToTerms)}
             className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800 flex items-center justify-center"
           >
             {loading ? (
@@ -193,20 +232,6 @@ export default function AuthPage() {
               isLogin ? 'Sign In' : 'Create Account'
             )}
           </button>
-
-          {!isLogin && (
-            <p className="text-center text-xs text-gray-400">
-              By creating an account you agree to Prophet&apos;s{' '}
-              <Link href="/terms" className="text-blue-400 hover:underline">
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link href="/privacy" className="text-blue-400 hover:underline">
-                Privacy Policy
-              </Link>
-              .
-            </p>
-          )}
         </form>
 
         {/* Message Display */}
