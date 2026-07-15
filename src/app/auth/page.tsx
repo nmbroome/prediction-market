@@ -108,8 +108,8 @@ export default function AuthPage() {
           </h1>
           <p className="text-gray-400">
             {isLogin 
-              ? 'Sign in to your Prophet V3 account' 
-              : 'Join Prophet V3 to start trading'
+              ? 'Sign in to your Prophet V4 account'
+              : 'Join Prophet V4 to start trading'
             }
           </p>
         </div>

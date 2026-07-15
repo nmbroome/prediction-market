@@ -47,23 +47,23 @@ const MarketStats = memo(({ data, timeFilter, loading = false }: MarketStatsProp
   const timeLabel = timeFilter === "2d" ? "today & yesterday" : timeFilter === "7d" ? "last 7 days" : timeFilter === "30d" ? "last 30 days" : "";
 
   const LoadingCard = ({ title }: { title: string }) => (
-    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+    <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)]">
       <h3 className="text-sm font-medium text-gray-400 mb-2">{title}</h3>
       <div className="animate-pulse">
-        <div className="h-8 bg-gray-700 rounded w-2/3 mb-2"></div>
-        <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+        <div className="h-8 bg-[var(--surface-2)] rounded w-2/3 mb-2"></div>
+        <div className="h-4 bg-[var(--surface-2)] rounded w-1/2"></div>
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+      <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-white">Market Statistics</h3>
-          <div className="flex rounded-lg bg-gray-800 p-1">
-            <div className="h-8 w-16 bg-gray-700 rounded animate-pulse"></div>
-            <div className="h-8 w-20 bg-gray-700 rounded animate-pulse ml-1"></div>
+          <div className="flex rounded-lg bg-[var(--surface)] p-1">
+            <div className="h-8 w-16 bg-[var(--surface-2)] rounded animate-pulse"></div>
+            <div className="h-8 w-20 bg-[var(--surface-2)] rounded animate-pulse ml-1"></div>
           </div>
         </div>
         
@@ -77,13 +77,13 @@ const MarketStats = memo(({ data, timeFilter, loading = false }: MarketStatsProp
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+    <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
       {/* Header with Filter Toggle */}
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-semibold text-white">Market Statistics</h3>
         
         {/* Filter Toggle */}
-        <div className="flex rounded-lg bg-gray-800 p-1">
+        <div className="flex rounded-lg bg-[var(--surface)] p-1">
           <button
             onClick={() => setActiveFilter("open")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -110,7 +110,7 @@ const MarketStats = memo(({ data, timeFilter, loading = false }: MarketStatsProp
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Markets Card */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-gray-400">Markets</h4>
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -128,7 +128,7 @@ const MarketStats = memo(({ data, timeFilter, loading = false }: MarketStatsProp
         </div>
 
         {/* Predictions Card */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-gray-400">Predictions</h4>
             <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -146,7 +146,7 @@ const MarketStats = memo(({ data, timeFilter, loading = false }: MarketStatsProp
         </div>
 
         {/* Trade Volume Card */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-medium text-gray-400">Trade Volume</h4>
             <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -166,7 +166,7 @@ const MarketStats = memo(({ data, timeFilter, loading = false }: MarketStatsProp
 
       {/* Optional: Stats Comparison */}
       {activeFilter === "open" && data.allTime.markets > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-700">
+        <div className="mt-4 pt-4 border-t border-[var(--border)]">
           <div className="flex justify-between text-sm text-gray-400">
             <span>Showing statistics for open markets only</span>
             <span>

@@ -67,7 +67,7 @@ export default function Leaderboard({ current, previous, error }: LeaderboardPro
   const renderRankChange = (player: RankedEntry) => {
     if (player.is_new) {
       return (
-        <span className="ml-2 text-xs bg-blue-600 text-white px-2 py-1 rounded-full">
+        <span className="ml-2 text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full">
           NEW
         </span>
       );
@@ -115,39 +115,48 @@ export default function Leaderboard({ current, previous, error }: LeaderboardPro
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-        <strong className="font-bold">Error!</strong>
+      <div className="max-w-md mx-auto mt-10 bg-rose-500/10 border border-rose-500/30 text-rose-300 px-4 py-3 rounded-xl">
+        <strong className="font-semibold">Error!</strong>
         <span className="block sm:inline"> {error}</span>
       </div>
     );
   }
 
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6 text-center text-white">Prophet Market Leaderboard</h1>
+  const rankAccent = (rank: number) =>
+    rank === 1 ? "text-amber-300"
+    : rank === 2 ? "text-slate-300"
+    : rank === 3 ? "text-orange-400"
+    : "text-[var(--muted)]";
 
-      <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
+  return (
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <div className="text-center mb-6">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Leaderboard</h1>
+        <p className="text-[var(--muted)] text-sm mt-2">Top forecasters ranked by realized performance.</p>
+      </div>
+
+      <div className="bg-[var(--surface)] rounded-2xl shadow-lg shadow-black/20 overflow-hidden border border-[var(--border)]">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className="bg-gray-900">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                  Position
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-[var(--border)]">
+                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-[var(--muted-2)] uppercase tracking-wider">
+                  Rank
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-3.5 text-left text-xs font-semibold text-[var(--muted-2)] uppercase tracking-wider">
                   User
                 </th>
                 <th
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "absolute" ? "bg-gray-800" : ""}`}
+                  className={`px-4 sm:px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors hover:text-white ${sortBy === "absolute" ? "text-white" : "text-[var(--muted-2)]"}`}
                   onClick={() => handleSortClick("absolute")}
                 >
-                  Total Profit/Loss
+                  Total P/L
                   {sortBy === "absolute" && (
                     <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>
                   )}
                 </th>
                 <th
-                  className={`px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer ${sortBy === "percent" ? "bg-gray-800" : ""}`}
+                  className={`px-4 sm:px-6 py-3.5 text-right text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors hover:text-white ${sortBy === "percent" ? "text-white" : "text-[var(--muted-2)]"}`}
                   onClick={() => handleSortClick("percent")}
                 >
                   Percent P&L
@@ -157,39 +166,42 @@ export default function Leaderboard({ current, previous, error }: LeaderboardPro
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-gray-800 divide-y divide-gray-700">
-              {rows.map((player, index) => (
-                <tr key={player.user_id} className={index % 2 === 0 ? "bg-gray-800" : "bg-gray-900"}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <span className="text-lg font-bold text-yellow-400 mr-2">#{index + 1}</span>
-                      {renderRankChange(player)}
-                      {index + 1 === 1 && <span className="text-yellow-400 ml-2">🏆</span>}
-                      {index + 1 === 2 && <span className="text-gray-300 ml-2">🥈</span>}
-                      {index + 1 === 3 && <span className="text-orange-400 ml-2">🥉</span>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-white">
-                      {player.username || player.user_id}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm font-bold ${player.total_profit_loss >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {formatCurrency(player.total_profit_loss)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className={`text-sm font-bold ${player.percent_pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {formatPercentage(player.percent_pnl)}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-[var(--border)]">
+              {rows.map((player, index) => {
+                const rank = index + 1;
+                return (
+                  <tr key={player.user_id} className="hover:bg-[var(--surface-hover)]/50 transition-colors">
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <span className={`text-base font-bold tabular-nums w-8 ${rankAccent(rank)}`}>#{rank}</span>
+                        {rank === 1 && <span className="ml-1">🏆</span>}
+                        {rank === 2 && <span className="ml-1">🥈</span>}
+                        {rank === 3 && <span className="ml-1">🥉</span>}
+                        {renderRankChange(player)}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-white max-w-[180px] truncate">
+                        {player.username || player.user_id}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right">
+                      <div className={`text-sm font-bold tabular-nums ${player.total_profit_loss >= 0 ? "text-green-400" : "text-rose-400"}`}>
+                        {formatCurrency(player.total_profit_loss)}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right">
+                      <div className={`text-sm font-bold tabular-nums ${player.percent_pnl >= 0 ? "text-green-400" : "text-rose-400"}`}>
+                        {formatPercentage(player.percent_pnl)}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-400">
+                  <td colSpan={4} className="px-6 py-10 text-center text-[var(--muted)]">
                     No leaderboard data available
                   </td>
                 </tr>

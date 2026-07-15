@@ -93,59 +93,71 @@ export default function MarketsList() {
   const counts = getMarketCounts();
 
   return (
-    <div className="w-full h-full">
-      <h1 className="text-lg font-bold mb-4 text-center text-white">Markets</h1>
+    <div className="w-full h-full pt-8">
+      <div className="text-center mb-6">
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Markets</h1>
+        <p className="text-[var(--muted)] text-sm mt-2">
+          Trade on real-world outcomes and track your forecasting edge.
+        </p>
+      </div>
 
       {/* Market Status Summary */}
       {markets && (
-        <div className="text-center mb-4">
-          <div className="flex justify-center gap-6 text-sm text-gray-400">
-            <span>
-              <span className="text-green-400 font-medium">{counts.current}</span> Open
-            </span>
-            <span>
-              <span className="text-blue-400 font-medium">{counts.resolved}</span> Resolved
-            </span>
-            <span>
-              <span className="text-yellow-400 font-medium">{counts.annulled}</span> Annulled
-            </span>
-            <span>
-              <span className="text-gray-300 font-medium">{counts.all}</span> Total
-            </span>
-          </div>
+        <div className="flex justify-center flex-wrap gap-2.5 mb-6">
+          {[
+            { label: "Open", value: counts.current, dot: "bg-green-400" },
+            { label: "Resolved", value: counts.resolved, dot: "bg-indigo-400" },
+            { label: "Annulled", value: counts.annulled, dot: "bg-amber-400" },
+            { label: "Total", value: counts.all, dot: "bg-slate-400" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1.5"
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${stat.dot}`} />
+              <span className="text-sm font-semibold text-white">{stat.value}</span>
+              <span className="text-xs text-[var(--muted)]">{stat.label}</span>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Status Filter Buttons */}
-      <div className="flex justify-center space-x-2 mb-4">
-        {statusFilterOptions.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => setStatusFilter(option.value)}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              statusFilter === option.value
-                ? "bg-green-600 text-white"
-                : "bg-green-500 hover:bg-green-600 text-white"
-            }`}
-          >
-            {option.label}
-            {option.value === 'current' && ` (${counts.current})`}
-            {option.value === 'previous' && ` (${counts.previous})`}
-            {option.value === 'all' && ` (${counts.all})`}
-          </button>
-        ))}
+      {/* Status Filter — segmented control */}
+      <div className="flex justify-center mb-4">
+        <div className="inline-flex rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1">
+          {statusFilterOptions.map((option) => {
+            const count =
+              option.value === "current" ? counts.current
+              : option.value === "previous" ? counts.previous
+              : counts.all;
+            return (
+              <button
+                key={option.value}
+                onClick={() => setStatusFilter(option.value)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  statusFilter === option.value
+                    ? "bg-[var(--surface-hover)] text-white shadow-sm"
+                    : "text-[var(--muted)] hover:text-white"
+                }`}
+              >
+                {option.label}
+                <span className="ml-1.5 text-xs opacity-60">{count}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Tag Filter Buttons */}
-      <div className="flex justify-center flex-wrap gap-2 mb-4">
+      {/* Tag Filter — ghost pills */}
+      <div className="flex justify-center flex-wrap gap-2 mb-8 px-4">
         {filterOptions.map((tag) => (
           <button
             key={tag}
             onClick={() => setSelectedTag(tag)}
-            className={`px-3 py-1 rounded-md text-sm ${
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
               selectedTag === tag
-                ? "bg-blue-600 text-white"
-                : "bg-blue-500 hover:bg-blue-600 text-white"
+                ? "bg-indigo-500 border-indigo-500 text-white"
+                : "bg-transparent border-[var(--border)] text-[var(--muted)] hover:text-white hover:border-[var(--border-strong)]"
             }`}
           >
             {tag.charAt(0).toUpperCase() + tag.slice(1)}

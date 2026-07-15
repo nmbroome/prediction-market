@@ -154,7 +154,7 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
   const filteredData = getFilteredData();
 
   const LoadingChart = ({ title }: { title: string }) => (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
       <h4 className="text-lg font-semibold text-white mb-4">{title}</h4>
       <div className="h-64 flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -164,13 +164,13 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
 
   if (loading) {
     return (
-      <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+      <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-semibold text-white">Market Activity Over Time</h3>
-          <div className="flex rounded-lg bg-gray-800 p-1">
-            <div className="h-8 w-16 bg-gray-700 rounded animate-pulse"></div>
-            <div className="h-8 w-20 bg-gray-700 rounded animate-pulse ml-1"></div>
-            <div className="h-8 w-20 bg-gray-700 rounded animate-pulse ml-1"></div>
+          <div className="flex rounded-lg bg-[var(--surface)] p-1">
+            <div className="h-8 w-16 bg-[var(--surface-2)] rounded animate-pulse"></div>
+            <div className="h-8 w-20 bg-[var(--surface-2)] rounded animate-pulse ml-1"></div>
+            <div className="h-8 w-20 bg-[var(--surface-2)] rounded animate-pulse ml-1"></div>
           </div>
         </div>
         
@@ -184,13 +184,13 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+    <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
       {/* Header with Time Filter */}
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-semibold text-white">Market Activity Over Time</h3>
         
         {/* Time Filter Toggle */}
-        <div className="flex rounded-lg bg-gray-800 p-1">
+        <div className="flex rounded-lg bg-[var(--surface)] p-1">
           <button
             onClick={() => setTimeFilter("daily")}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -227,7 +227,7 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
       {/* Charts Grid - Vertical Layout */}
       <div className="space-y-6">
         {/* Predictions Chart */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-white">Predictions</h4>
             <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -272,7 +272,7 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
         </div>
 
         {/* New Markets Chart */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-white">New Markets</h4>
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -314,7 +314,7 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
         </div>
 
         {/* Trade Volume Chart */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-lg font-semibold text-white">Trade Volume</h4>
             <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -364,7 +364,7 @@ const MarketActivityCharts = memo(({ data, loading = false }: MarketActivityChar
       </div>
 
       {/* Summary Info */}
-      <div className="mt-6 pt-4 border-t border-gray-700">
+      <div className="mt-6 pt-4 border-t border-[var(--border)]">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-400">
           <div className="text-center">
             <span className="text-purple-400 font-medium">

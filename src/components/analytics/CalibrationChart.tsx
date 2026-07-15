@@ -165,7 +165,7 @@ const CalibrationChart = memo(() => {
 
   if (loading) {
     return (
-      <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+      <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
         <h3 className="text-xl font-semibold text-white mb-4">Platform Calibration</h3>
         <div className="h-96 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -176,7 +176,7 @@ const CalibrationChart = memo(() => {
 
   if (error) {
     return (
-      <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+      <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
         <h3 className="text-xl font-semibold text-white mb-4">Platform Calibration</h3>
         <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
           <p className="text-red-400">Error: {error}</p>
@@ -186,7 +186,7 @@ const CalibrationChart = memo(() => {
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+    <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
         <div>
           <h3 className="text-xl font-semibold text-white">Platform Calibration</h3>
@@ -197,7 +197,7 @@ const CalibrationChart = memo(() => {
           </p>
         </div>
         {brier != null && (
-          <div className="bg-gray-800 rounded-lg px-4 py-2 border border-gray-700 text-center shrink-0">
+          <div className="bg-[var(--surface)] rounded-lg px-4 py-2 border border-[var(--border)] text-center shrink-0">
             <div className="text-gray-400 text-xs">Brier score</div>
             <div className="text-2xl font-bold text-blue-400">{brier.toFixed(3)}</div>
             <div className="text-gray-500 text-xs">lower is better</div>
@@ -286,7 +286,7 @@ const CalibrationChart = memo(() => {
             </ResponsiveContainer>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400 text-center">
+          <div className="mt-4 pt-4 border-t border-[var(--border)] text-sm text-gray-400 text-center">
             Based on{" "}
             <span className="text-blue-400 font-medium">
               {new Intl.NumberFormat("en-US").format(totalTrades)}

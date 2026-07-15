@@ -219,7 +219,7 @@ export default function MarketProbabilityChart({
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="p-3 bg-[#1E1E1E] border border-[#2C2C2C] rounded shadow-lg">
+        <div className="p-3 bg-[var(--surface-2)] border border-[var(--border-strong)] rounded-lg shadow-xl">
           <p className="text-gray-300">{new Date(data.timestamp).toLocaleString()}</p>
           <p className="text-white font-semibold">YES: {data.probability}%</p>
           <p className="text-white font-semibold">NO: {100 - data.probability}%</p>
@@ -241,27 +241,25 @@ export default function MarketProbabilityChart({
   }
 
   return (
-    <div className="w-full bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] p-4">
-      <div className="flex flex-col mb-4">
-        <h3 className="text-white text-xl font-semibold mb-4">Market Probability</h3>
-        
-        <div className="flex justify-end items-center mb-4">
-          {/* Time range selector */}
-          <div className="flex space-x-2">
-            {(['1d', '7d', '30d', 'all'] as const).map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-3 py-1 text-sm rounded ${
-                  timeRange === range
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#2C2C2C] text-gray-400 hover:bg-[#3C3C3C]'
-                }`}
-              >
-                {range === 'all' ? 'All' : range}
-              </button>
-            ))}
-          </div>
+    <div className="w-full bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-lg shadow-black/20 p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <h3 className="text-white text-lg font-semibold">Market Probability</h3>
+
+        {/* Time range selector — segmented control */}
+        <div className="inline-flex rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-1">
+          {(['1d', '7d', '30d', 'all'] as const).map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${
+                timeRange === range
+                  ? 'bg-[var(--surface-hover)] text-white shadow-sm'
+                  : 'text-[var(--muted)] hover:text-white'
+              }`}
+            >
+              {range === 'all' ? 'All' : range}
+            </button>
+          ))}
         </div>
       </div>
       

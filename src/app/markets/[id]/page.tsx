@@ -175,45 +175,46 @@ export default function MarketDetails() {
       : "N/A";
 
   // Get a display label for market status
+  const pill = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border";
   const getStatusLabel = () => {
     if (isResolved(market) && winningOutcome) {
       return (
-        <span className="bg-green-600 text-white px-3 py-1 rounded text-sm font-medium">
-          Resolved: {winningOutcome.name} Won
+        <span className={`${pill} bg-green-500/15 border-green-500/30 text-green-300`}>
+          Resolved · {winningOutcome.name} Won
         </span>
       );
     }
 
     if (isAnnulled(market)) {
       return (
-        <span className="bg-yellow-600 text-white px-3 py-1 rounded text-sm font-medium">
-          Annulled: Settled at 50¢
+        <span className={`${pill} bg-amber-500/15 border-amber-500/30 text-amber-300`}>
+          Annulled · Settled at 50¢
         </span>
       );
     }
 
     switch (marketStatus) {
       case 'pending':
-        return <span className="bg-yellow-600 text-white px-2 py-1 rounded text-sm">Pending</span>;
+        return <span className={`${pill} bg-amber-500/15 border-amber-500/30 text-amber-300`}>Pending</span>;
       case 'open':
-        return <span className="bg-green-600 text-white px-2 py-1 rounded text-sm">Open</span>;
+        return <span className={`${pill} bg-green-500/15 border-green-500/30 text-green-300`}><span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />Open</span>;
       case 'closed':
-        return <span className="bg-red-600 text-white px-2 py-1 rounded text-sm">Closed</span>;
+        return <span className={`${pill} bg-rose-500/15 border-rose-500/30 text-rose-300`}>Closed</span>;
       case 'resolved':
-        return <span className="bg-blue-600 text-white px-2 py-1 rounded text-sm">Resolved</span>;
+        return <span className={`${pill} bg-indigo-500/15 border-indigo-500/30 text-indigo-300`}>Resolved</span>;
       case 'annulled':
-        return <span className="bg-yellow-600 text-white px-2 py-1 rounded text-sm">Annulled</span>;
+        return <span className={`${pill} bg-amber-500/15 border-amber-500/30 text-amber-300`}>Annulled</span>;
       default:
         return null;
     }
   };
 
   return (
-    <div className="py-6 max-w-7xl mx-auto">
+    <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Market Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <h1 className="text-4xl font-bold text-white">{market.name}</h1>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">{market.name}</h1>
           {getStatusLabel()}
         </div>
         
@@ -243,25 +244,26 @@ export default function MarketDetails() {
             </div>
           </div>
         ) : !isSettled(market) && marketStatus === 'open' ? (
-          <p className="text-2xl mt-2 text-white">
-            <strong>{yesOdds} Chance</strong>
-          </p>
+          <div className="flex items-baseline gap-2 mt-1 mb-2">
+            <span className="text-4xl font-bold text-green-400 tabular-nums">{yesOdds}</span>
+            <span className="text-lg text-[var(--muted)]">chance · Yes</span>
+          </div>
         ) : null}
-        
-        <div className="space-y-2">
-          <p className="text-xl text-white">
-            <strong>Description:</strong> {market.description}
+
+        <div className="space-y-2.5">
+          <p className="text-base sm:text-lg text-[var(--muted)] leading-relaxed max-w-3xl">
+            {market.description}
           </p>
-          
+
           {/* Data Release Link */}
           {market.link && (
             <div className="flex items-center gap-2">
-              <span className="text-blue-400 font-medium">Data Release:</span>
+              <span className="text-[var(--muted-2)] font-medium text-sm">Data Release:</span>
               <a
                 href={market.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-300 hover:text-blue-100 underline hover:no-underline transition-colors flex items-center gap-1"
+                className="text-indigo-400 hover:text-indigo-300 underline hover:no-underline transition-colors flex items-center gap-1 text-sm"
               >
                 View Data Release
                 <svg 
@@ -283,15 +285,15 @@ export default function MarketDetails() {
           )}
           
           {market.close_date && (
-            <p className="text-md text-gray-300">
-              Closes: {new Date(market.close_date + 'T00:00:00').toLocaleDateString()}
+            <p className="text-sm text-[var(--muted-2)]">
+              Closes {new Date(market.close_date + 'T00:00:00').toLocaleDateString()}
             </p>
           )}
         </div>
       </div>
 
       {/* Chart and Trading Form Side by Side */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-8 items-start">
         {/* Price Chart - Takes up 2/3 of the width on large screens */}
         <div className="lg:col-span-2">
           <PriceChart 
@@ -305,7 +307,7 @@ export default function MarketDetails() {
           {marketStatus === 'open' ? (
             <TradingForm />
           ) : (
-            <div className="p-6 bg-[#1E1E1E] rounded-lg border border-[#2C2C2C] text-center">
+            <div className="p-6 bg-[var(--surface)] rounded-2xl border border-[var(--border)] shadow-lg shadow-black/20 text-center lg:sticky lg:top-24">
               <div>
                 {isResolved(market) && winningOutcome ? (
                   <>

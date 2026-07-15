@@ -649,20 +649,20 @@ export default function TradeForm() {
 
   const LoadingSkeleton = () => (
     <div className="animate-pulse">
-      <div className="h-4 bg-[#2C2C2C] rounded w-3/4 mb-4"></div>
-      <div className="h-10 bg-[#2C2C2C] rounded w-full mb-4"></div>
-      <div className="h-10 bg-[#2C2C2C] rounded w-full mb-4"></div>
+      <div className="h-4 bg-[var(--surface-2)] rounded w-3/4 mb-4"></div>
+      <div className="h-10 bg-[var(--surface-2)] rounded w-full mb-4"></div>
+      <div className="h-10 bg-[var(--surface-2)] rounded w-full mb-4"></div>
     </div>
   );
 
   const isLoading = isUserLoading || isMarketLoading || isBalanceLoading;
 
   return (
-    <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-lg border border-[#2C2C2C] p-6">
+    <div className="w-full lg:max-w-md bg-[var(--surface)] rounded-2xl shadow-lg shadow-black/20 border border-[var(--border)] p-5 sm:p-6 lg:sticky lg:top-24">
       {/* Market Title */}
       <div className="mb-6">
         {isMarketLoading ? (
-          <div className="h-6 bg-[#2C2C2C] rounded w-2/3 animate-pulse"></div>
+          <div className="h-6 bg-[var(--surface-2)] rounded w-2/3 animate-pulse"></div>
         ) : (
           <h2 className="text-white text-xl font-semibold">
             {market?.name}
@@ -671,37 +671,37 @@ export default function TradeForm() {
       </div>
 
       {/* User Balance Display */}
-      <div className="mb-4 p-3 bg-[#2C2C2C] rounded-lg">
+      <div className="mb-4 p-3 bg-[var(--surface-2)] rounded-lg">
         <div className="flex justify-between items-center">
           <span className="text-gray-400">Your Balance:</span>
           {isBalanceLoading ? (
-            <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
+            <div className="h-4 bg-[var(--surface-hover)] rounded w-16 animate-pulse"></div>
           ) : (
             <span className="text-white font-medium">{formatCurrency(userBalance)}</span>
           )}
         </div>
       </div>
 
-      {/* Trade Type Selector */}
-      <div className="flex mb-6">
+      {/* Trade Type Selector — segmented control */}
+      <div className="flex gap-1 mb-6 p-1 bg-[var(--surface-2)] rounded-xl">
         <button
           onClick={() => setTradeType('buy')}
-          className={`w-1/2 py-2 ${
-            tradeType === 'buy' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-[#2C2C2C] text-gray-400'
-          } rounded-l-lg transition-colors`}
+          className={`w-1/2 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            tradeType === 'buy'
+              ? 'bg-[var(--surface-hover)] text-white shadow-sm'
+              : 'text-[var(--muted)] hover:text-white'
+          }`}
           disabled={isLoading}
         >
           Buy
         </button>
         <button
           onClick={() => setTradeType('sell')}
-          className={`w-1/2 py-2 ${
-            tradeType === 'sell' 
-              ? 'bg-blue-600 text-white' 
-              : 'bg-[#2C2C2C] text-gray-400'
-          } rounded-r-lg transition-colors`}
+          className={`w-1/2 py-2 rounded-lg text-sm font-semibold transition-colors ${
+            tradeType === 'sell'
+              ? 'bg-[var(--surface-hover)] text-white shadow-sm'
+              : 'text-[var(--muted)] hover:text-white'
+          }`}
           disabled={isLoading}
         >
           Sell
@@ -712,27 +712,34 @@ export default function TradeForm() {
       <div className="flex gap-4 mb-6">
         {isMarketLoading ? (
           <>
-            <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
-            <div className="flex-1 h-12 bg-[#2C2C2C] rounded-lg animate-pulse"></div>
+            <div className="flex-1 h-12 bg-[var(--surface-2)] rounded-lg animate-pulse"></div>
+            <div className="flex-1 h-12 bg-[var(--surface-2)] rounded-lg animate-pulse"></div>
           </>
         ) : answers.length > 0 ? (
-          answers.map((answer) => (
-            <button
-              key={answer.id}
-              onClick={() => setSelectedAnswer(answer)}
-              className={`flex-1 py-3 rounded-lg transition-colors ${
-                selectedAnswer?.id === answer.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-[#2C2C2C] text-gray-400 hover:bg-[#3C3C3C]'
-              }`}
-              disabled={isLoading}
-            >
-              <div className="flex justify-between px-4">
-                <span>{answer.name}</span>
-                <span>{getOutcomeProbability(answer)}¢</span>
-              </div>
-            </button>
-          ))
+          answers.map((answer) => {
+            const isYes = answer.name.toLowerCase() === 'yes';
+            const selected = selectedAnswer?.id === answer.id;
+            const selectedTone = isYes
+              ? 'bg-green-500/15 border-green-500/60 text-green-300'
+              : 'bg-rose-500/15 border-rose-500/60 text-rose-300';
+            return (
+              <button
+                key={answer.id}
+                onClick={() => setSelectedAnswer(answer)}
+                className={`flex-1 py-3 rounded-xl border transition-colors ${
+                  selected
+                    ? selectedTone
+                    : 'bg-[var(--surface-2)] border-transparent text-[var(--muted)] hover:bg-[var(--surface-hover)] hover:text-white'
+                }`}
+                disabled={isLoading}
+              >
+                <div className="flex justify-between px-4 font-medium">
+                  <span>{answer.name}</span>
+                  <span className="tabular-nums">{getOutcomeProbability(answer)}¢</span>
+                </div>
+              </button>
+            );
+          })
         ) : (
           <div className="w-full text-center text-gray-400 py-3">
             No outcomes available for this market
@@ -753,7 +760,7 @@ export default function TradeForm() {
             type="number"
             value={totalPrice}
             onChange={(e) => setTotalPrice(Number(e.target.value))}
-            className="w-full bg-[#2C2C2C] text-white py-3 pl-6 pr-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full bg-[var(--surface-2)] text-white py-3 pl-6 pr-3 rounded-lg border border-[var(--border)] focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
             placeholder="0"
             disabled={isLoading}
             max={tradeType === 'buy' ? userBalance : undefined}
@@ -795,7 +802,7 @@ export default function TradeForm() {
       )}
 
       {/* Enhanced Trade Details */}
-      <div className="bg-[#2C2C2C] rounded-lg p-4 mb-6 text-sm">
+      <div className="bg-[var(--surface-2)] rounded-lg p-4 mb-6 text-sm">
         {isLoading ? (
           <LoadingSkeleton />
         ) : (
@@ -852,7 +859,7 @@ export default function TradeForm() {
               <div className="flex justify-between mb-2">
                 <span className="text-gray-400">Your position</span>
                 {isSharesLoading ? (
-                  <div className="h-4 bg-[#3C3C3C] rounded w-16 animate-pulse"></div>
+                  <div className="h-4 bg-[var(--surface-hover)] rounded w-16 animate-pulse"></div>
                 ) : (
                   <span className="text-white">
                     {formatShares(userShares[selectedAnswer.id] || 0).toFixed(2)} shares
@@ -888,12 +895,12 @@ export default function TradeForm() {
       </div>
 
       {/* Action Button */}
-      <button 
+      <button
         onClick={handleSubmit}
-        className={`w-full py-4 rounded-lg transition-colors flex justify-center items-center ${
+        className={`w-full py-3.5 rounded-xl font-semibold transition-all flex justify-center items-center ${
           isLoading || isSubmitting || !validation.isValid
-            ? 'bg-gray-600 cursor-not-allowed opacity-50' 
-            : 'bg-blue-600 hover:bg-blue-700'
+            ? 'bg-[var(--surface-2)] text-[var(--muted-2)] cursor-not-allowed'
+            : 'bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-900/30'
         }`}
         disabled={isLoading || isSubmitting || !validation.isValid}
       >

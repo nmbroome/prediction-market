@@ -36,18 +36,18 @@ const UserStatistics = memo(({ data, timeFilter, loading = false }: UserStatisti
   };
 
   const LoadingCard = ({ title }: { title: string }) => (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+    <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
       <h4 className="text-sm font-medium text-gray-400 mb-2">{title}</h4>
       <div className="animate-pulse">
-        <div className="h-8 bg-gray-700 rounded w-2/3 mb-2"></div>
-        <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+        <div className="h-8 bg-[var(--surface-2)] rounded w-2/3 mb-2"></div>
+        <div className="h-4 bg-[var(--surface-2)] rounded w-1/2"></div>
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+      <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
         <h3 className="text-xl font-semibold text-white mb-6">User Statistics</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -60,7 +60,7 @@ const UserStatistics = memo(({ data, timeFilter, loading = false }: UserStatisti
   }
 
   return (
-    <div className="bg-gray-900 rounded-lg p-6 border border-gray-800 mb-8">
+    <div className="bg-[var(--background)] rounded-lg p-6 border border-[var(--border)] mb-8">
       {/* Header */}
       <div className="mb-6">
         <h3 className="text-xl font-semibold text-white">User Statistics</h3>
@@ -72,7 +72,7 @@ const UserStatistics = memo(({ data, timeFilter, loading = false }: UserStatisti
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Users Card */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-gray-400">New Users</h4>
             <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
@@ -90,7 +90,7 @@ const UserStatistics = memo(({ data, timeFilter, loading = false }: UserStatisti
         </div>
 
         {/* Active Traders Card */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-gray-400">Active Traders</h4>
             <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -108,7 +108,7 @@ const UserStatistics = memo(({ data, timeFilter, loading = false }: UserStatisti
         </div>
 
         {/* Trader Ratio Card */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+        <div className="bg-[var(--surface)] rounded-lg p-6 border border-[var(--border)]">
           <div className="flex items-center justify-between mb-3">
             <h4 className="text-sm font-medium text-gray-400">Trader Ratio</h4>
             <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
@@ -127,7 +127,7 @@ const UserStatistics = memo(({ data, timeFilter, loading = false }: UserStatisti
       </div>
 
       {/* Additional Insights */}
-      <div className="mt-6 pt-4 border-t border-gray-700">
+      <div className="mt-6 pt-4 border-t border-[var(--border)]">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-400">
           <div className="flex justify-between">
             <span>Active Traders:</span>

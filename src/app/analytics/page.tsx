@@ -310,8 +310,8 @@ export default function AnalyticsPage() {
       <div className="min-h-screen bg-transparent text-white">
         <div className="container mx-auto p-6">
           <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <span className="ml-3 text-gray-400">Loading analytics...</span>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+            <span className="ml-3 text-[var(--muted)]">Loading analytics...</span>
           </div>
         </div>
       </div>
@@ -347,10 +347,10 @@ export default function AnalyticsPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <div>
-              <h1 className="text-3xl font-bold mb-2">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">
                 {activeView === 'user' ? 'User Analytics' : 'Market Analytics'}
               </h1>
-              <p className="text-gray-400">
+              <p className="text-[var(--muted)]">
                 {activeView === 'user'
                   ? 'Prophet user engagement and activity statistics'
                   : 'Prophet prediction market statistics and trends'
@@ -360,7 +360,7 @@ export default function AnalyticsPage() {
 
             <div className="flex flex-col sm:flex-row gap-3">
               {/* KPI Time Filter */}
-              <div className="flex rounded-lg bg-gray-800 p-1">
+              <div className="flex rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">
                 {(["2d", "7d", "30d"] as KpiTimeFilter[]).map((filter) => (
                   <button
                     key={filter}
@@ -377,7 +377,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* View Toggle */}
-              <div className="flex rounded-lg bg-gray-800 p-1">
+              <div className="flex rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1">
                 <button
                   onClick={() => setActiveView('user')}
                   className={`px-6 py-3 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${

@@ -342,27 +342,29 @@ export default function UserProfile() {
   };
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen px-4 sm:px-6 py-8">
       {user && profile ? (
         <div className="max-w-4xl mx-auto">
           {/* Profile Header */}
-          <div className="flex items-center mb-8">
-            <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-purple-500 rounded-full mr-6"></div>
-            <div>
-              <h1 className="text-3xl font-bold text-white">{profile.username}</h1>
-              <p className="text-gray-400">Joined Nov 2020</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 rounded-2xl shadow-lg shadow-indigo-900/30 grid place-items-center text-3xl font-bold text-white shrink-0">
+              {(profile.username || "?").charAt(0).toUpperCase()}
             </div>
-            <button 
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white truncate">{profile.username}</h1>
+              <p className="text-[var(--muted)] text-sm">Forecaster · {profile.email || "member"}</p>
+            </div>
+            <button
               onClick={openEditModal}
-              className="ml-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+              className="sm:ml-auto bg-[var(--surface-2)] border border-[var(--border)] text-white px-4 py-2 rounded-lg hover:bg-[var(--surface-hover)] transition-colors text-sm font-medium"
             >
               Edit Profile
             </button>
           </div>
 
           {/* Stats Grid - Updated */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
-            <div className="rounded-lg border-2 border-gray-400 p-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
               <div className="text-gray-400 mb-2">Positions value</div>
               <div className="text-white font-bold text-xl">
                 {isLoadingPnl ? (
@@ -372,7 +374,7 @@ export default function UserProfile() {
                 )}
               </div>
             </div>
-            <div className="border-2 border-gray-400 rounded-lg p-4">
+            <div className="border border-[var(--border)] bg-[var(--surface)] rounded-lg p-4">
               <div className="text-gray-400 mb-2">
                 Profit/loss
               </div>
@@ -389,7 +391,7 @@ export default function UserProfile() {
                 </div>
               )}
             </div>
-            <div className="border-2 border-gray-400 rounded-lg p-4">
+            <div className="border border-[var(--border)] bg-[var(--surface)] rounded-lg p-4">
               <div className="text-gray-400 mb-2">
                 Volume traded
               </div>
@@ -401,7 +403,7 @@ export default function UserProfile() {
                 )}
               </div>
             </div>
-            <div className="border-2 border-gray-400 rounded-lg p-4">
+            <div className="border border-[var(--border)] bg-[var(--surface)] rounded-lg p-4">
               <div className="text-gray-400 mb-2">
                 Markets traded
               </div>
@@ -419,9 +421,9 @@ export default function UserProfile() {
           <PerformanceRadar userId={user.id} />
 
           {/* Additional Details */}
-          <div className="border-2 border-gray-400 rounded-lg p-6 mb-6">
+          <div className="border border-[var(--border)] bg-[var(--surface)] rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">Profile Details</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-gray-400">Email</p>
                 <p className="text-white mb-2">{profile.email || "N/A"}</p>
@@ -429,7 +431,7 @@ export default function UserProfile() {
                 <button
                   onClick={handleResetPassword}
                   disabled={resettingPassword}
-                  className="mt-2 rounded-lg border border-gray-500 px-4 py-2 text-sm text-white hover:bg-[#333] disabled:opacity-50"
+                  className="mt-2 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2 text-sm text-white hover:bg-[var(--surface-hover)] transition-colors disabled:opacity-50"
                 >
                   {resettingPassword ? "Sending…" : "Reset Password"}
                 </button>
@@ -462,7 +464,7 @@ export default function UserProfile() {
           </div>
 
           {/* Email Notifications Settings */}
-          <div className="border-2 border-gray-400 rounded-lg p-6 mb-6">
+          <div className="border border-[var(--border)] bg-[var(--surface)] rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">Notification Settings</h2>
             <div className="flex items-center justify-between">
               <div>
@@ -484,23 +486,23 @@ export default function UserProfile() {
                     onChange={(e) => handleEmailNotificationsChange(e.target.checked)}
                     disabled={updatingNotifications}
                   />
-                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-[var(--surface-hover)] peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-500/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                 </label>
               </div>
             </div>
           </div>
 
           {/* Research Participation */}
-          <div className="border-2 border-gray-400 rounded-lg p-6 mb-6">
+          <div className="border border-[var(--border)] bg-[var(--surface)] rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">Research Participation</h2>
             <p className="text-gray-400 text-sm">
               Prophet is a research platform. By using it you take part in the research
               it produces: your forecasts on resolved markets become part of a permanent
               public research archive, and a coded (de-identified) copy of your trading
               history may be shared with researchers under a Data Use Agreement. See the{" "}
-              <a href="/terms" target="_blank" className="text-blue-400 hover:underline">Terms of Service</a>{" "}
+              <a href="/terms" target="_blank" className="text-indigo-400 hover:text-indigo-300 hover:underline">Terms of Service</a>{" "}
               and{" "}
-              <a href="/privacy" target="_blank" className="text-blue-400 hover:underline">Privacy Policy</a>.
+              <a href="/privacy" target="_blank" className="text-indigo-400 hover:text-indigo-300 hover:underline">Privacy Policy</a>.
               To stop future use of your data, close your account.
             </p>
             {profile.tos_accepted_at && (
@@ -514,7 +516,7 @@ export default function UserProfile() {
           {/* Trade History Toggle */}
           <button
             onClick={() => setShowTradeHistory(!showTradeHistory)}
-            className="w-full border-2 border-gray-400 text-white py-3 rounded-lg hover:bg-[#333] transition-colors"
+            className="w-full border border-[var(--border)] bg-[var(--surface)] text-white py-3 rounded-lg hover:bg-[var(--surface-hover)] transition-colors"
           >
             {showTradeHistory ? 'Hide Trade History' : 'Show Trade History'}
           </button>

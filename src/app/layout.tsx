@@ -18,7 +18,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="bg-[#101827] min-h-screen w-full flex flex-col">
+      <body className="min-h-screen w-full flex flex-col">
         <PostHogProvider>
           <MigrationBanner/>
           <Navbar/>

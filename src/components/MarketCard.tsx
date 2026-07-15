@@ -220,12 +220,12 @@ export default function MarketCard({
   }
 
   return (
-    <Link href={`/markets/${id}`}>
-      <div className="bg-transparent border border-gray-200 rounded-lg shadow-md hover:shadow-lg transition duration-200 cursor-pointer w-80 overflow-hidden">
-        <div className="p-4">
+    <Link href={`/markets/${id}`} className="w-full max-w-sm group">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-lg shadow-black/20 hover:border-[var(--border-strong)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer w-full overflow-hidden h-full">
+        <div className="p-5">
           {/* Header with title and status */}
-          <div className="flex justify-between items-start mb-4">
-            <h2 className="text-lg font-semibold text-white flex-1 mr-2">{name}</h2>
+          <div className="flex justify-between items-start mb-4 gap-2">
+            <h2 className="text-base font-semibold leading-snug text-white flex-1 group-hover:text-indigo-200 transition-colors line-clamp-3">{name}</h2>
             {getStatusBadge()}
           </div>
           
@@ -261,63 +261,73 @@ export default function MarketCard({
               </div>
             </div>
           ) : (
-            /* Outcome bubbles container for open markets */
+            /* Outcome tiles + probability bar for open markets */
             sortedOutcomes.length > 0 && (
-              <div className="flex justify-between items-center mb-4">
-                {sortedOutcomes.slice(0, 2).map((outcome, index) => {
-                  // Calculate odds only if totalTokens > 0 to avoid division by zero
-                  const odds = totalTokens ? (outcome.tokens / totalTokens) * 100 : 0;
-                  const bgColor = outcome.name.toLowerCase() === "yes" ? "bg-blue-50" : "bg-purple-50";
-                  const textColor = outcome.name.toLowerCase() === "yes" ? "text-blue-600" : "text-purple-600";
-                  const borderColor = outcome.name.toLowerCase() === "yes" ? "border-blue-200" : "border-purple-200";
-
+              <div className="mb-4">
+                {/* Probability split bar */}
+                {(() => {
+                  const yesOdds = totalTokens
+                    ? ((sortedOutcomes[0]?.tokens ?? 0) / totalTokens) * 100
+                    : 50;
                   return (
-                    <div
-                      key={index}
-                      className={`flex flex-col justify-center items-center w-[calc(50%-0.5rem)] h-24 rounded-lg border ${bgColor} ${textColor} ${borderColor} p-2`}
-                    >
-                      <div className="text-sm font-medium">{outcome.name}</div>
-                      <div className="text-2xl font-bold">{odds.toFixed(0)}%</div>
-                      <div className="text-xs">$100 → ${(100 * odds / 100).toFixed(0)}</div>
+                    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-2)] mb-3">
+                      <div className="bg-green-500/80" style={{ width: `${yesOdds}%` }} />
+                      <div className="bg-rose-500/70" style={{ width: `${100 - yesOdds}%` }} />
                     </div>
                   );
-                })}
+                })()}
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  {sortedOutcomes.slice(0, 2).map((outcome, index) => {
+                    // Calculate odds only if totalTokens > 0 to avoid division by zero
+                    const odds = totalTokens ? (outcome.tokens / totalTokens) * 100 : 0;
+                    const isYes = outcome.name.toLowerCase() === "yes";
+                    const tone = isYes
+                      ? "bg-green-500/10 border-green-500/25 text-green-400"
+                      : "bg-rose-500/10 border-rose-500/25 text-rose-400";
+
+                    return (
+                      <div
+                        key={index}
+                        className={`flex flex-col items-center justify-center rounded-xl border py-3 ${tone}`}
+                      >
+                        <div className="text-xs font-semibold uppercase tracking-wide opacity-80">{outcome.name}</div>
+                        <div className="text-2xl font-bold tabular-nums">{odds.toFixed(0)}%</div>
+                        <div className="text-[11px] text-[var(--muted)]">$100 → ${(odds).toFixed(0)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )
           )}
 
-          {/* 24h Price Change Indicator (only for open markets) */}
-          {isOpen && priceChange && (
-            <div className="flex justify-center items-center mb-3">
-              <div className="text-center">
-                <div className="text-xs text-gray-400">24h Change</div>
+          {/* Footer: volume · trades · 24h change */}
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-3 text-xs">
+            <div className="flex items-center gap-4 text-[var(--muted)]">
+              <span>
+                <span className="text-gray-300 font-medium">
+                  {isLoading ? "—" : marketVolume !== null ? formatCurrency(marketVolume) : "$0"}
+                </span>{" "}
+                Vol
+              </span>
+              <span>
+                <span className="text-gray-300 font-medium">{isLoading ? "—" : tradeCount}</span>{" "}
+                Trades
+              </span>
+            </div>
+            {isOpen && priceChange && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[var(--muted-2)]">24h</span>
                 {priceChange.hasData ? (
-                  <div className={`text-sm font-medium ${getPriceChangeColor(priceChange.changeAmount)}`}>
+                  <span className={`font-semibold ${getPriceChangeColor(priceChange.changeAmount)}`}>
                     {formatPriceChange(priceChange)}
-                  </div>
+                  </span>
                 ) : (
-                  <div className="text-xs text-gray-500">No data</div>
+                  <span className="text-[var(--muted-2)]">—</span>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Market stats - volume and trade count */}
-          <div className="flex flex-col space-y-1">
-            <div className="text-center text-sm text-gray-500">
-              {isLoading ? (
-                "Loading market data..."
-              ) : (
-                `Volume: ${marketVolume !== null ? formatCurrency(marketVolume) : "$0"}`
-              )}
-            </div>
-            <div className="text-center text-sm text-gray-500">
-              {isLoading ? (
-                ""
-              ) : (
-                `Trades: ${tradeCount}`
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
